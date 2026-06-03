@@ -50,7 +50,7 @@ function AppLayout() {
 
   if (!user) return null;
 
-  const visibleNav = NAV.filter((n) => !n.perm || n.perm === "org.manage" ? (n.perm ? can(user.role, n.perm) : true) : can(user.role, n.perm));
+  const visibleNav = NAV.filter((n) => !n.perm || can(user.role, n.perm));
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
