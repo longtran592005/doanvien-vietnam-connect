@@ -6,10 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Building2, Users, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Users, ChevronRight, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import type { ClassUnit, Faculty } from "@/lib/types";
 
 export const Route = createFileRoute("/app/organization")({ component: Org });
 
@@ -20,6 +25,10 @@ function Org() {
   const [openCls, setOpenCls] = useState(false);
   const [facName, setFacName] = useState(""); const [facCode, setFacCode] = useState("");
   const [clsName, setClsName] = useState(""); const [clsFaculty, setClsFaculty] = useState("");
+  const [editFac, setEditFac] = useState<Faculty | null>(null);
+  const [editCls, setEditCls] = useState<ClassUnit | null>(null);
+  const [delFac, setDelFac] = useState<Faculty | null>(null);
+  const [delCls, setDelCls] = useState<ClassUnit | null>(null);
 
   if (!allowed) return <NoAccess />;
 
@@ -34,12 +43,16 @@ function Org() {
           <Dialog open={openFac} onOpenChange={setOpenFac}>
             <DialogTrigger asChild><Button variant="outline"><Plus className="size-4 mr-1" /> Thêm khoa</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Thêm Liên chi đoàn (Khoa)</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Thêm Liên chi đoàn (Khoa)</DialogTitle>
+                <DialogDescription>Mỗi khoa tương đương một Liên chi đoàn trực thuộc Đoàn trường.</DialogDescription>
+              </DialogHeader>
               <div className="space-y-3">
                 <div><Label>Mã khoa</Label><Input value={facCode} onChange={(e) => setFacCode(e.target.value)} placeholder="VD: CNTT" /></div>
                 <div><Label>Tên khoa</Label><Input value={facName} onChange={(e) => setFacName(e.target.value)} placeholder="VD: Khoa Công nghệ Thông tin" /></div>
               </div>
               <DialogFooter>
+                <Button variant="ghost" onClick={() => setOpenFac(false)}>Hủy</Button>
                 <Button onClick={() => {
                   if (!facName.trim() || !facCode.trim()) { toast.error("Vui lòng nhập đủ thông tin"); return; }
                   addFaculty(facName.trim(), facCode.trim().toUpperCase());
@@ -51,7 +64,10 @@ function Org() {
           <Dialog open={openCls} onOpenChange={setOpenCls}>
             <DialogTrigger asChild><Button><Plus className="size-4 mr-1" /> Thêm lớp</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Thêm Chi đoàn lớp</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Thêm Chi đoàn lớp</DialogTitle>
+                <DialogDescription>Chi đoàn lớp trực thuộc Liên chi đoàn (Khoa).</DialogDescription>
+              </DialogHeader>
               <div className="space-y-3">
                 <div><Label>Khoa</Label>
                   <Select value={clsFaculty} onValueChange={setClsFaculty}>
@@ -62,6 +78,7 @@ function Org() {
                 <div><Label>Tên lớp</Label><Input value={clsName} onChange={(e) => setClsName(e.target.value)} placeholder="VD: CNTT K65A" /></div>
               </div>
               <DialogFooter>
+                <Button variant="ghost" onClick={() => setOpenCls(false)}>Hủy</Button>
                 <Button onClick={() => {
                   if (!clsName.trim() || !clsFaculty) { toast.error("Vui lòng nhập đủ thông tin"); return; }
                   addClass(clsName.trim(), clsFaculty);
@@ -89,12 +106,8 @@ function Org() {
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" onClick={() => {
-                      const n = prompt("Tên khoa mới", f.name); if (n && n.trim()) renameFaculty(f.id, n.trim());
-                    }}><Pencil className="size-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => {
-                      if (confirm(`Xóa khoa "${f.name}"?`)) deleteFaculty(f.id);
-                    }}><Trash2 className="size-4 text-destructive" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => setEditFac(f)}><Pencil className="size-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => setDelFac(f)}><Trash2 className="size-4 text-destructive" /></Button>
                   </div>
                 </div>
               </CardHeader>
@@ -106,12 +119,8 @@ function Org() {
                       <Users className="size-3.5 text-muted-foreground" />
                       <span className="flex-1">{c.name}</span>
                       <span className="text-xs text-muted-foreground">{members.filter((m) => m.classId === c.id).length}</span>
-                      <Button size="icon" variant="ghost" className="size-7 opacity-0 group-hover:opacity-100" onClick={() => {
-                        const n = prompt("Tên lớp mới", c.name); if (n && n.trim()) renameClass(c.id, n.trim());
-                      }}><Pencil className="size-3" /></Button>
-                      <Button size="icon" variant="ghost" className="size-7 opacity-0 group-hover:opacity-100" onClick={() => {
-                        if (confirm(`Xóa lớp "${c.name}"?`)) deleteClass(c.id);
-                      }}><Trash2 className="size-3 text-destructive" /></Button>
+                      <Button size="icon" variant="ghost" className="size-7 opacity-0 group-hover:opacity-100" onClick={() => setEditCls(c)}><Pencil className="size-3" /></Button>
+                      <Button size="icon" variant="ghost" className="size-7 opacity-0 group-hover:opacity-100" onClick={() => setDelCls(c)}><Trash2 className="size-3 text-destructive" /></Button>
                     </li>
                   ))}
                   {cls.length === 0 && <li className="text-xs text-muted-foreground italic p-2">Chưa có lớp nào</li>}
@@ -121,7 +130,132 @@ function Org() {
           );
         })}
       </div>
+
+      <EditFacultyDialog
+        faculty={editFac}
+        onClose={() => setEditFac(null)}
+        onSave={(name) => { renameFaculty(editFac!.id, name); toast.success("Đã cập nhật khoa"); setEditFac(null); }}
+      />
+      <EditClassDialog
+        cls={editCls}
+        onClose={() => setEditCls(null)}
+        onSave={(name) => { renameClass(editCls!.id, name); toast.success("Đã cập nhật lớp"); setEditCls(null); }}
+      />
+
+      <AlertDialog open={!!delFac} onOpenChange={(o) => !o && setDelFac(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-destructive" /> Xác nhận xóa khoa
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa khoa <span className="font-medium text-foreground">"{delFac?.name}"</span>?
+              Thao tác này không thể hoàn tác. Các lớp và đoàn viên thuộc khoa sẽ không còn được liên kết.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (delFac) { deleteFaculty(delFac.id); toast.success("Đã xóa khoa"); setDelFac(null); } }}
+            >
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!delCls} onOpenChange={(o) => !o && setDelCls(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-5 text-destructive" /> Xác nhận xóa lớp
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa lớp <span className="font-medium text-foreground">"{delCls?.name}"</span>?
+              Thao tác này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (delCls) { deleteClass(delCls.id); toast.success("Đã xóa lớp"); setDelCls(null); } }}
+            >
+              Xóa
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+function EditFacultyDialog({ faculty, onClose, onSave }: { faculty: Faculty | null; onClose: () => void; onSave: (name: string) => void }) {
+  const [name, setName] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <Dialog open={!!faculty} onOpenChange={(o) => { if (!o) onClose(); else { setName(faculty?.name ?? ""); setErr(null); } }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Chỉnh sửa khoa</DialogTitle>
+          <DialogDescription>Cập nhật tên hiển thị của khoa (Liên chi đoàn).</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Mã khoa</Label>
+            <Input value={faculty?.code ?? ""} disabled className="bg-muted" />
+          </div>
+          <div>
+            <Label>Tên khoa</Label>
+            <Input value={name} onChange={(e) => { setName(e.target.value); setErr(null); }} autoFocus />
+            {err && <p className="text-xs text-destructive mt-1">{err}</p>}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Hủy</Button>
+          <Button onClick={() => {
+            if (!name.trim()) { setErr("Tên khoa không được để trống"); return; }
+            onSave(name.trim());
+          }}>Lưu thay đổi</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditClassDialog({ cls, onClose, onSave }: { cls: ClassUnit | null; onClose: () => void; onSave: (name: string) => void }) {
+  const { faculties } = useStore();
+  const [name, setName] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const fac = faculties.find((f) => f.id === cls?.facultyId);
+  return (
+    <Dialog open={!!cls} onOpenChange={(o) => { if (!o) onClose(); else { setName(cls?.name ?? ""); setErr(null); } }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Chỉnh sửa Chi đoàn lớp</DialogTitle>
+          <DialogDescription>Cập nhật tên hiển thị của Chi đoàn lớp.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Khoa</Label>
+            <Input value={fac?.name ?? ""} disabled className="bg-muted" />
+          </div>
+          <div>
+            <Label>Tên lớp</Label>
+            <Input value={name} onChange={(e) => { setName(e.target.value); setErr(null); }} autoFocus />
+            {err && <p className="text-xs text-destructive mt-1">{err}</p>}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Hủy</Button>
+          <Button onClick={() => {
+            if (!name.trim()) { setErr("Tên lớp không được để trống"); return; }
+            onSave(name.trim());
+          }}>Lưu thay đổi</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
