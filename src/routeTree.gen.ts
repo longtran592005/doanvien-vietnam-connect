@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppTrainingRouteImport } from './routes/app.training'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
 import { Route as AppOrganizationRouteImport } from './routes/app.organization'
 import { Route as AppMembersRouteImport } from './routes/app.members'
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppTrainingRoute = AppTrainingRouteImport.update({
   id: '/training',
   path: '/training',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppReportsRoute = AppReportsRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/app/members': typeof AppMembersRouteWithChildren
   '/app/organization': typeof AppOrganizationRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/training': typeof AppTrainingRoute
   '/app/members/$id': typeof AppMembersIdRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/app/members': typeof AppMembersRouteWithChildren
   '/app/organization': typeof AppOrganizationRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/training': typeof AppTrainingRoute
   '/app/members/$id': typeof AppMembersIdRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/app/members': typeof AppMembersRouteWithChildren
   '/app/organization': typeof AppOrganizationRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/settings': typeof AppSettingsRoute
   '/app/training': typeof AppTrainingRoute
   '/app/members/$id': typeof AppMembersIdRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/app/members'
     | '/app/organization'
     | '/app/reports'
+    | '/app/settings'
     | '/app/training'
     | '/app/members/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/app/members'
     | '/app/organization'
     | '/app/reports'
+    | '/app/settings'
     | '/app/training'
     | '/app/members/$id'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/app/members'
     | '/app/organization'
     | '/app/reports'
+    | '/app/settings'
     | '/app/training'
     | '/app/members/$id'
   fileRoutesById: FileRoutesById
@@ -205,6 +217,13 @@ declare module '@tanstack/react-router' {
       path: '/training'
       fullPath: '/app/training'
       preLoaderRoute: typeof AppTrainingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/reports': {
@@ -286,6 +305,7 @@ interface AppRouteChildren {
   AppMembersRoute: typeof AppMembersRouteWithChildren
   AppOrganizationRoute: typeof AppOrganizationRoute
   AppReportsRoute: typeof AppReportsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppTrainingRoute: typeof AppTrainingRoute
 }
 
@@ -297,6 +317,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMembersRoute: AppMembersRouteWithChildren,
   AppOrganizationRoute: AppOrganizationRoute,
   AppReportsRoute: AppReportsRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppTrainingRoute: AppTrainingRoute,
 }
 
