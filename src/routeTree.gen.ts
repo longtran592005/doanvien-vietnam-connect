@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppTrainingRouteImport } from './routes/app.training'
 import { Route as AppOrganizationRouteImport } from './routes/app.organization'
 import { Route as AppMembersRouteImport } from './routes/app.members'
+import { Route as AppEventsRouteImport } from './routes/app.events'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppMembersIdRouteImport } from './routes/app.members.$id'
 
@@ -48,6 +49,11 @@ const AppMembersRoute = AppMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEventsRoute = AppEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/events': typeof AppEventsRoute
   '/app/members': typeof AppMembersRouteWithChildren
   '/app/organization': typeof AppOrganizationRoute
   '/app/training': typeof AppTrainingRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/events': typeof AppEventsRoute
   '/app/members': typeof AppMembersRouteWithChildren
   '/app/organization': typeof AppOrganizationRoute
   '/app/training': typeof AppTrainingRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/events': typeof AppEventsRoute
   '/app/members': typeof AppMembersRouteWithChildren
   '/app/organization': typeof AppOrganizationRoute
   '/app/training': typeof AppTrainingRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/app/dashboard'
+    | '/app/events'
     | '/app/members'
     | '/app/organization'
     | '/app/training'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/app/dashboard'
+    | '/app/events'
     | '/app/members'
     | '/app/organization'
     | '/app/training'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/app/dashboard'
+    | '/app/events'
     | '/app/members'
     | '/app/organization'
     | '/app/training'
@@ -173,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMembersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/events': {
+      id: '/app/events'
+      path: '/events'
+      fullPath: '/app/events'
+      preLoaderRoute: typeof AppEventsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/dashboard': {
       id: '/app/dashboard'
       path: '/dashboard'
@@ -204,6 +223,7 @@ const AppMembersRouteWithChildren = AppMembersRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
+  AppEventsRoute: typeof AppEventsRoute
   AppMembersRoute: typeof AppMembersRouteWithChildren
   AppOrganizationRoute: typeof AppOrganizationRoute
   AppTrainingRoute: typeof AppTrainingRoute
@@ -211,6 +231,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
+  AppEventsRoute: AppEventsRoute,
   AppMembersRoute: AppMembersRouteWithChildren,
   AppOrganizationRoute: AppOrganizationRoute,
   AppTrainingRoute: AppTrainingRoute,
