@@ -6,14 +6,13 @@ import { can } from "@/lib/permissions";
 import {
   LayoutDashboard, Users, Network, Award, CalendarDays, Wallet,
   FileBarChart, ShieldAlert, Settings, Bell, LogOut, KeyRound, ChevronDown,
-  Menu, GraduationCap,
+  Menu, GraduationCap, CheckCircle2, AlertTriangle, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSub,
-  DropdownMenuSubTrigger, DropdownMenuSubContent,
+  DropdownMenuRadioGroup, DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -132,10 +131,7 @@ function AppLayout() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="size-5" />
-              <span className="absolute top-2 right-2 size-2 rounded-full bg-primary" />
-            </Button>
+            <NotificationsBell />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
