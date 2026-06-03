@@ -172,6 +172,125 @@ function AppLayout() {
 }
 
 function ChangePasswordDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  // see below
+  return <ChangePasswordDialogImpl open={open} onOpenChange={onOpenChange} />;
+}
+
+interface Notif { id: string; title: string; desc?: string; kind: "info" | "warn" | "success"; at?: string; }
+
+function useNotifications(): Notif[] {
+  const { user, events, members, fees, training, audit, classes } = useStore();
+  if (!user) return [];
+  const list: Notif[] = [];
+  const now = Date.now();
+  const inScope = (facultyId?: string) => {
+    if (["admin", "university_officer", "inspection_officer", "financial_officer"].includes(user.role)) return true;
+    if (user.role === "faculty_officer") return !facultyId || facultyId === user.facultyId;
+    if (user.role === "class_secretary") return !facultyId || facultyId === user.facultyId;
+    return true;
+  };
+  if (["admin", "university_officer", "faculty_officer"].includes(user.role)) {
+    events.filter((e) => e.status === "pending" && inScope(e.facultyId)).forEach((e) =>
+      list.push({ id: `ev-${e.id}`, kind: "warn", title: "Hoạt động chờ phê duyệt", desc: e.title, at: e.startAt }),
+    );
+  }
+  events.filter((e) => e.status === "approved").forEach((e) => {
+    const t = new Date(e.startAt).getTime();
+    if (t - now > 0 && t - now < 14 * 86400000 && inScope(e.facultyId)) {
+      list.push({ id: `up-${e.id}`, kind: "info", title: "Sắp diễn ra: " + e.title, desc: e.location, at: e.startAt });
+    }
+  });
+  if (user.role === "member" || user.role === "class_secretary") {
+    const mid = user.memberId;
+    if (mid) {
+      events.filter((e) => e.registered.includes(mid) && !e.attended.includes(mid) && e.status === "approved").forEach((e) =>
+        list.push({ id: `me-${e.id}`, kind: "info", title: "Bạn đã đăng ký: " + e.title, at: e.startAt }),
+      );
+      fees.filter((f) => f.memberId === mid && !f.paid).forEach((f) =>
+        list.push({ id: `fee-${f.id}`, kind: "warn", title: "Chưa đóng đoàn phí", desc: `Kỳ ${f.period} — ${f.amount.toLocaleString("vi-VN")}đ` }),
+      );
+      const me = members.find((m) => m.id === mid);
+      if (me && me.trainingScore < 50) {
+        list.push({ id: `sc-${mid}`, kind: "warn", title: "Điểm rèn luyện thấp", desc: `Hiện tại: ${me.trainingScore}` });
+      }
+      training.filter((t) => t.memberId === mid).slice(0, 3).forEach((t) =>
+        list.push({
+          id: `tr-${t.id}`,
+          kind: t.type === "reward" ? "success" : "warn",
+          title: t.type === "reward" ? `Cộng ${t.delta} điểm rèn luyện` : `Trừ ${Math.abs(t.delta)} điểm rèn luyện`,
+          desc: t.reason,
+          at: t.date,
+        }),
+      );
+    }
+  }
+  if (user.role === "financial_officer" || user.role === "admin") {
+    const unpaid = fees.filter((f) => !f.paid).length;
+    if (unpaid > 0) list.push({ id: "fin-unpaid", kind: "warn", title: "Đoàn phí chưa thu", desc: `${unpaid} khoản chưa hoàn tất` });
+  }
+  if (user.role === "class_secretary" && user.classId) {
+    const low = members.filter((m) => m.classId === user.classId && m.trainingScore < 50);
+    if (low.length) list.push({ id: "cs-low", kind: "warn", title: "Đoàn viên cần lưu ý", desc: `${low.length} bạn có điểm rèn luyện < 50` });
+  }
+  if (user.role === "faculty_officer" && user.facultyId) {
+    const cls = classes.filter((c) => c.facultyId === user.facultyId).length;
+    list.push({ id: "fo-info", kind: "info", title: "Phạm vi quản lý", desc: `${cls} chi đoàn thuộc khoa` });
+  }
+  if (user.role === "inspection_officer" || user.role === "admin") {
+    audit.slice(0, 3).forEach((a) =>
+      list.push({ id: `au-${a.id}`, kind: "info", title: a.action, desc: a.target, at: a.at }),
+    );
+  }
+  return list.slice(0, 20);
+}
+
+function NotificationsBell() {
+  const items = useNotifications();
+  const count = items.length;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="size-5" />
+          {count > 0 && (
+            <span className="absolute top-1.5 right-1.5 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold grid place-items-center">
+              {count > 9 ? "9+" : count}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>Thông báo</span>
+          <Badge variant="secondary" className="font-normal">{count}</Badge>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {count === 0 ? (
+          <div className="px-3 py-6 text-sm text-muted-foreground text-center">Không có thông báo mới</div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto">
+            {items.map((n) => {
+              const Icon = n.kind === "success" ? CheckCircle2 : n.kind === "warn" ? AlertTriangle : Info;
+              const color = n.kind === "success" ? "text-emerald-500" : n.kind === "warn" ? "text-amber-500" : "text-primary";
+              return (
+                <div key={n.id} className="px-3 py-2.5 flex gap-3 hover:bg-accent/50 border-b last:border-0">
+                  <Icon className={cn("size-4 mt-0.5 shrink-0", color)} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-tight">{n.title}</p>
+                    {n.desc && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.desc}</p>}
+                    {n.at && <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(n.at).toLocaleString("vi-VN")}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ChangePasswordDialogImpl({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { changePassword } = useStore();
   const [oldP, setOldP] = useState("");
   const [newP, setNewP] = useState("");
