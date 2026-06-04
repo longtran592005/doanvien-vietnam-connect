@@ -15,15 +15,19 @@ export const getMemberByIdFn = createServerFn({ method: "GET" })
 export const addMemberFn = createServerFn({ method: "POST" })
   .inputValidator(z.any())
   .handler(async ({ data }) => {
-    // Generate id and mapping logic from simple frontend payload
-    const { id, ...rest } = data;
-    const newMember = await prisma.member.create({
-      data: {
-        ...rest,
-      }
-    });
-    await logAudit("Thêm đoàn viên", "system", newMember.fullName);
-    return { success: true, member: newMember };
+    try {
+      const { id, ...rest } = data;
+      const newMember = await prisma.member.create({
+        data: {
+          ...rest,
+        }
+      });
+      await logAudit("Thêm đoàn viên", "system", newMember.fullName);
+      return { success: true, member: newMember };
+    } catch (e: any) {
+      if (e.code === 'P2002') return { error: "Mã đoàn viên đã tồn tại trong hệ thống." };
+      return { error: "Lỗi hệ thống khi thêm đoàn viên." };
+    }
   });
 
 export const updateMemberFn = createServerFn({ method: "POST" })

@@ -75,8 +75,9 @@ function Org() {
                 <Button variant="ghost" onClick={() => setOpenFac(false)}>Hủy</Button>
                 <Button onClick={() => {
                   if (!facName.trim() || !facCode.trim()) { toast.error("Vui lòng nhập đủ thông tin"); return; }
-                  addFacMut.mutate({ name: facName.trim(), code: facCode.trim().toUpperCase() });
-                  setFacName(""); setFacCode(""); setOpenFac(false); toast.success("Đã thêm khoa");
+                  addFacMut.mutate({ name: facName.trim(), code: facCode.trim().toUpperCase() }, {
+                    onSuccess: (res) => { if (res.error) toast.error(res.error); else { setFacName(""); setFacCode(""); setOpenFac(false); toast.success("Đã thêm khoa"); } }
+                  });
                 }}>Lưu</Button>
               </DialogFooter>
             </DialogContent>
@@ -101,8 +102,9 @@ function Org() {
                 <Button variant="ghost" onClick={() => setOpenCls(false)}>Hủy</Button>
                 <Button onClick={() => {
                   if (!clsName.trim() || !clsFaculty) { toast.error("Vui lòng nhập đủ thông tin"); return; }
-                  addClsMut.mutate({ name: clsName.trim(), facultyId: clsFaculty });
-                  setClsName(""); setClsFaculty(""); setOpenCls(false); toast.success("Đã thêm lớp");
+                  addClsMut.mutate({ name: clsName.trim(), facultyId: clsFaculty }, {
+                    onSuccess: (res) => { if (res.error) toast.error(res.error); else { setClsName(""); setClsFaculty(""); setOpenCls(false); toast.success("Đã thêm lớp"); } }
+                  });
                 }}>Lưu</Button>
               </DialogFooter>
             </DialogContent>
@@ -177,7 +179,7 @@ function Org() {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { if (delFac) { delFacMut.mutate({ id: delFac.id }); toast.success("Đã xóa khoa"); setDelFac(null); } }}
+              onClick={() => { if (delFac) { delFacMut.mutate({ id: delFac.id }, { onSuccess: (res) => { if (res.error) toast.error(res.error); else { toast.success("Đã xóa khoa"); setDelFac(null); } } }); } }}
             >
               Xóa
             </AlertDialogAction>
@@ -200,7 +202,7 @@ function Org() {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { if (delCls) { delClsMut.mutate({ id: delCls.id }); toast.success("Đã xóa lớp"); setDelCls(null); } }}
+              onClick={() => { if (delCls) { delClsMut.mutate({ id: delCls.id }, { onSuccess: (res) => { if (res.error) toast.error(res.error); else { toast.success("Đã xóa lớp"); setDelCls(null); } } }); } }}
             >
               Xóa
             </AlertDialogAction>

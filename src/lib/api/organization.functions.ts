@@ -25,9 +25,14 @@ export const renameFacultyFn = createServerFn({ method: "POST" })
 export const deleteFacultyFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
-    await prisma.faculty.delete({ where: { id: data.id } });
-    await logAudit("Xóa khoa", "system", data.id);
-    return { success: true };
+    try {
+      await prisma.faculty.delete({ where: { id: data.id } });
+      await logAudit("Xóa khoa", "system", data.id);
+      return { success: true };
+    } catch (e: any) {
+      if (e.code === 'P2003') return { error: "Không thể xóa khoa đang có lớp hoặc đoàn viên." };
+      return { error: "Lỗi hệ thống khi xóa khoa" };
+    }
   });
 
 export const getClassesFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -53,7 +58,12 @@ export const renameClassFn = createServerFn({ method: "POST" })
 export const deleteClassFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
-    await prisma.classUnit.delete({ where: { id: data.id } });
-    await logAudit("Xóa lớp", "system", data.id);
-    return { success: true };
+    try {
+      await prisma.classUnit.delete({ where: { id: data.id } });
+      await logAudit("Xóa lớp", "system", data.id);
+      return { success: true };
+    } catch (e: any) {
+      if (e.code === 'P2003') return { error: "Không thể xóa lớp đang có đoàn viên." };
+      return { error: "Lỗi hệ thống khi xóa lớp" };
+    }
   });

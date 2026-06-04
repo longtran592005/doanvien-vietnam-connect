@@ -166,7 +166,11 @@ function AddMemberDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   const queryClient = useQueryClient();
   const addMutation = useMutation({
     mutationFn: (m: any) => addMemberFn({ data: m }),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
       toast.success("Đã thêm đoàn viên mới");
       onOpenChange(false);

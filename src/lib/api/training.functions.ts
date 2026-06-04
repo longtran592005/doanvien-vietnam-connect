@@ -28,3 +28,44 @@ export const addTrainingLogFn = createServerFn({ method: "POST" })
     await logAudit(data.type === "reward" ? "Cộng điểm rèn luyện" : "Trừ điểm rèn luyện", data.createdBy || "system", data.memberId);
     return { success: true };
   });
+export const addBulkTrainingLogFn = createServerFn({ method: "POST" })
+  .inputValidator(z.object({
+    memberIds: z.array(z.string()),
+    date: z.string(),
+    delta: z.number(),
+    reason: z.string(),
+    type: z.string(),
+    createdBy: z.string()
+  }))
+  .handler(async ({ data }) => {
+    const { memberIds, ...rest } = data;
+    
+    // Sử dụng transaction để đảm bảo toàn vẹn
+    await prisma.$transaction(async (tx) => {
+      // 1. Tạo nhiều bản ghi log
+      const logs = memberIds.map(memberId => ({
+        ...rest,
+        memberId
+      }));
+      await tx.trainingLog.createMany({
+        data: logs
+      });
+
+      // 2. Cập nhật điểm cho từng người
+      // Prisma SQLite hiện chưa hỗ trợ updateMany với tính toán toán học (increment/decrement) có min/max an toàn nếu điểm khác nhau
+      // Do đó, ta lặp qua để cập nhật
+      const members = await tx.member.findMany({
+        where: { id: { in: memberIds } }
+      });
+      
+      for (const m of members) {
+        await tx.member.update({
+          where: { id: m.id },
+          data: { trainingScore: Math.max(0, Math.min(100, m.trainingScore + data.delta)) }
+        });
+      }
+    });
+    
+    await logAudit(data.type === "reward" ? "Cộng điểm rèn luyện (nhóm)" : "Trừ điểm rèn luyện (nhóm)", data.createdBy || "system", `Cho ${memberIds.length} đoàn viên`);
+    return { success: true };
+  });
