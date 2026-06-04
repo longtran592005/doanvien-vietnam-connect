@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
+import { addTrainingLogFn } from "@/lib/api/training.functions";
 import { can } from "@/lib/permissions";
 import { scopedMembers } from "@/lib/scope";
 import { classify, CLASSIFICATION_LABELS } from "@/lib/types";
@@ -18,8 +21,23 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/app/training")({ component: TrainingPage });
 
 function TrainingPage() {
-  const { user, members, training, addTrainingLog } = useStore();
-  const list = useMemo(() => scopedMembers(members, user!), [members, user]);
+  const { user } = useStore();
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
+
+  const queryClient = useQueryClient();
+  const addMut = useMutation({
+    mutationFn: (d: any) => addTrainingLogFn({ data: d }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard-data"] }),
+  });
+
+  const list = useMemo(() => {
+    if (!data) return [];
+    return scopedMembers(data.members, user!);
+  }, [data, user]);
   const allowed = can(user?.role, "training.grade");
 
   const [open, setOpen] = useState(false);
@@ -33,7 +51,7 @@ function TrainingPage() {
     if (!memberId) return toast.error("Chọn đoàn viên");
     if (!Number.isFinite(n) || n <= 0) return toast.error("Điểm phải là số dương");
     if (!reason.trim()) return toast.error("Nhập lý do");
-    addTrainingLog({
+    addMut.mutate({
       memberId, date: new Date().toISOString().slice(0, 10),
       delta: type === "reward" ? n : -n,
       reason: reason.trim(), type, createdBy: user!.code,
@@ -41,6 +59,9 @@ function TrainingPage() {
     toast.success("Đã ghi nhận");
     setMemberId(""); setReason(""); setDelta("5"); setOpen(false);
   };
+
+  if (isLoading || !data) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
+  const { training, members } = data;
 
   return (
     <div className="space-y-6">

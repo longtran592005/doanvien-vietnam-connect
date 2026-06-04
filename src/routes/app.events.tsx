@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useStore } from "@/lib/store";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
+import { addEventFn, approveEventFn, registerEventFn, markAttendedFn } from "@/lib/api/events.functions";
 import { can } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,31 +12,54 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MapPin, Clock, Check, UserPlus, QrCode } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, MapPin, Clock, CheckCircle2, UserPlus, QrCode } from "lucide-react";
 import { toast } from "sonner";
+import type { EventItem } from "@/lib/types";
 
 export const Route = createFileRoute("/app/events")({ component: EventsPage });
 
 function EventsPage() {
-  const { user, events, addEvent, approveEvent, registerEvent, markAttended, members } = useStore();
+  const { user } = useStore();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", startAt: "", location: "" });
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
+
+  const queryClient = useQueryClient();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
+  const addEventMut = useMutation({ mutationFn: (d: any) => addEventFn({ data: d }), onSuccess: invalidate });
+  const approveMut = useMutation({ mutationFn: (d: any) => approveEventFn({ data: d }), onSuccess: invalidate });
+  const registerMut = useMutation({ mutationFn: (d: any) => registerEventFn({ data: d }), onSuccess: invalidate });
+  const attendMut = useMutation({ mutationFn: (d: any) => markAttendedFn({ data: d }), onSuccess: invalidate });
 
   const canCreate = can(user?.role, "events.create");
   const canApprove = can(user?.role, "events.approve");
 
-  const submit = () => {
-    if (!form.title.trim() || !form.startAt || !form.location.trim()) return toast.error("Vui lòng nhập đủ thông tin");
-    addEvent({
-      title: form.title.trim(), description: form.description.trim(),
-      startAt: form.startAt, location: form.location.trim(),
-      status: user!.role === "class_secretary" ? "pending" : "approved",
-      createdBy: user!.code, facultyId: user!.facultyId,
-    });
-    toast.success("Đã tạo hoạt động");
-    setForm({ title: "", description: "", startAt: "", location: "" });
-    setOpen(false);
-  };
+  const list = useMemo(() => {
+    if (!data) return [];
+    // scopedEvents logic:
+    let l = data.events;
+    if (user?.role === "faculty_officer") {
+      l = l.filter((e) => !e.facultyId || e.facultyId === user.facultyId);
+    } else if (user?.role === "class_secretary" || user?.role === "member") {
+      l = l.filter((e) => !e.facultyId || e.facultyId === user.facultyId);
+    }
+    
+    if (statusFilter !== "all") l = l.filter((e) => e.status === statusFilter);
+    if (q.trim()) {
+      const s = q.toLowerCase();
+      l = l.filter((e) => e.title.toLowerCase().includes(s));
+    }
+    return l.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+  }, [data, user, q, statusFilter]);
+
+  if (isLoading || !data) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
 
   return (
     <div className="space-y-6">
@@ -55,14 +81,39 @@ function EventsPage() {
                   <div><Label>Địa điểm</Label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
                 </div>
               </div>
-              <DialogFooter><Button onClick={submit}>Lưu</Button></DialogFooter>
+              <DialogFooter>
+                <Button onClick={() => {
+                  if (!form.title.trim() || !form.startAt || !form.location.trim()) return toast.error("Vui lòng nhập đủ thông tin");
+                  addEventMut.mutate({
+                    title: form.title.trim(), description: form.description.trim(),
+                    startAt: form.startAt, location: form.location.trim(),
+                    status: user?.role === "class_secretary" ? "pending" : "approved",
+                    createdBy: user?.code, facultyId: user?.facultyId,
+                  });
+                  toast.success("Đã gửi yêu cầu tạo hoạt động");
+                  setForm({ title: "", description: "", startAt: "", location: "" });
+                  setOpen(false);
+                }}>Lưu</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
       </div>
 
+      <div className="flex gap-3">
+        <Input placeholder="Tìm tên hoạt động..." value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="pending">Chờ duyệt</SelectItem>
+            <SelectItem value="approved">Đã duyệt</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {events.map((e) => {
+        {list.map((e: EventItem) => {
           const isRegistered = user?.memberId ? e.registered.includes(user.memberId) : false;
           const isAttended = user?.memberId ? e.attended.includes(user.memberId) : false;
           return (
@@ -84,18 +135,18 @@ function EventsPage() {
                 </div>
                 <div className="flex gap-2 flex-wrap pt-2">
                   {canApprove && e.status === "pending" && (
-                    <Button size="sm" onClick={() => { approveEvent(e.id); toast.success("Đã phê duyệt"); }}>
-                      <Check className="size-4 mr-1" /> Phê duyệt
+                    <Button size="sm" onClick={() => { approveMut.mutate({ id: e.id, actor: user!.code }); toast.success("Đã duyệt hoạt động"); }}>
+                      <CheckCircle2 className="size-4 mr-1" /> Duyệt
                     </Button>
                   )}
                   {user?.memberId && e.status === "approved" && !isRegistered && (
-                    <Button size="sm" variant="outline" onClick={() => { registerEvent(e.id, user.memberId!); toast.success("Đã đăng ký"); }}>
+                    <Button size="sm" variant="outline" onClick={() => { registerMut.mutate({ eventId: e.id, memberId: user.memberId }); toast.success("Đã đăng ký"); }}>
                       <UserPlus className="size-4 mr-1" /> Đăng ký
                     </Button>
                   )}
                   {user?.memberId && isRegistered && !isAttended && (
-                    <Button size="sm" variant="secondary" onClick={() => { markAttended(e.id, user.memberId!); toast.success("Đã điểm danh"); }}>
-                      <QrCode className="size-4 mr-1" /> Điểm danh (mô phỏng QR)
+                    <Button size="sm" variant="secondary" onClick={() => { attendMut.mutate({ eventId: e.id, memberId: user.memberId }); toast.success("Đã điểm danh"); }}>
+                      <QrCode className="size-4 mr-1" /> Điểm danh
                     </Button>
                   )}
                   {isAttended && <Badge>Đã có mặt</Badge>}

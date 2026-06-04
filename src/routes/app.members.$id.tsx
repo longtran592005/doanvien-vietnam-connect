@@ -1,6 +1,9 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
+import { updateMemberFn } from "@/lib/api/members.functions";
 import { can } from "@/lib/permissions";
 import { classify, CLASSIFICATION_LABELS, PARTY_LABELS, type PartyStatus } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,17 +21,35 @@ export const Route = createFileRoute("/app/members/$id")({ component: MemberDeta
 
 function MemberDetail() {
   const { id } = useParams({ from: "/app/members/$id" });
-  const { user, members, faculties, classes, updateMember, training } = useStore();
-  const member = members.find((m) => m.id === id);
+  const { user } = useStore();
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
+
+  const queryClient = useQueryClient();
+  const updateMutation = useMutation({
+    mutationFn: (patch: any) => updateMemberFn({ data: { id: id as string, patch } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
+      toast.success("Đã lưu hồ sơ");
+    }
+  });
+
+  const member = data?.members.find((m) => m.id === id);
   const editable = can(user?.role, "members.edit");
   const [draft, setDraft] = useState(member);
 
+  if (isLoading || !data) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
   if (!member) return <p>Không tìm thấy hồ sơ.</p>;
+  
+  const { faculties, classes, training } = data;
   const d = draft ?? member;
   const cls = classify(d.trainingScore);
 
   const update = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setDraft({ ...d, [k]: v });
-  const save = () => { updateMember(d.id, d); toast.success("Đã lưu hồ sơ"); };
+  const save = () => { updateMutation.mutate(d); };
 
   const logs = training.filter((t) => t.memberId === id);
 

@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useStore, DEMO_USERS, DEFAULT_PWD } from "@/lib/store";
+import { useQuery } from "@tanstack/react-query";
+import { getBackupDataFn } from "@/lib/api/audit.functions";
 import { can } from "@/lib/permissions";
 import { NoAccess } from "./app.organization";
 import { ROLE_LABELS } from "@/lib/types";
@@ -12,18 +14,27 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/app/settings")({ component: SettingsPage });
 
 function SettingsPage() {
-  const { user, resetPassword, members, faculties, classes, events, fees, audit } = useStore();
+  const { user } = useStore();
   if (!can(user?.role, "system.admin")) return <NoAccess />;
 
-  const backup = () => {
-    const payload = { members, faculties, classes, events, fees, audit, at: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const { data, isLoading } = useQuery({
+    queryKey: ["backup-data"],
+    queryFn: () => getBackupDataFn(),
+  });
+
+  const backup = async () => {
+    if (!data) return;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = `tbu-doan-backup-${Date.now()}.json`; a.click();
     URL.revokeObjectURL(url);
     toast.success("Đã tải bản sao lưu");
   };
+
+  const membersCount = data?.members.length ?? 0;
+  const eventsCount = data?.events.length ?? 0;
+  const auditCount = data?.audit.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -54,7 +65,7 @@ function SettingsPage() {
                       <td className="px-3 py-2">{u.name}</td>
                       <td className="px-3 py-2"><Badge variant="outline">{ROLE_LABELS[u.role]}</Badge></td>
                       <td className="px-3 py-2 text-right">
-                        <Button size="sm" variant="outline" onClick={() => { resetPassword(u.code); toast.success("Đã đặt lại mật khẩu"); }}>
+                        <Button size="sm" variant="outline" onClick={() => { toast.success("Đã đặt lại mật khẩu (Mock)"); }}>
                           Đặt lại
                         </Button>
                       </td>
@@ -73,11 +84,11 @@ function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-3 gap-3 text-sm">
-              <Stat label="Đoàn viên" value={members.length} />
-              <Stat label="Hoạt động" value={events.length} />
-              <Stat label="Nhật ký" value={audit.length} />
+              <Stat label="Đoàn viên" value={membersCount} />
+              <Stat label="Hoạt động" value={eventsCount} />
+              <Stat label="Nhật ký" value={auditCount} />
             </div>
-            <Button onClick={backup}><Download className="size-4 mr-1" /> Tạo bản sao lưu</Button>
+            <Button onClick={backup} disabled={isLoading}><Download className="size-4 mr-1" /> Tạo bản sao lưu</Button>
           </CardContent>
         </Card>
       </div>

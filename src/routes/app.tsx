@@ -1,6 +1,9 @@
 import { createFileRoute, Outlet, useNavigate, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useStore, DEMO_USERS } from "@/lib/store";
+import { logoutFn, changePasswordFn } from "@/lib/api/auth.functions";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
+import { useQuery } from "@tanstack/react-query";
 import { ROLE_LABELS, type Role } from "@/lib/types";
 import { can } from "@/lib/permissions";
 import {
@@ -37,7 +40,7 @@ const NAV: NavItem[] = [
 ];
 
 function AppLayout() {
-  const { user, logout, switchRole } = useStore();
+  const { user, setUser, switchRole } = useStore();
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [pwdOpen, setPwdOpen] = useState(false);
@@ -153,7 +156,7 @@ function AppLayout() {
                   <KeyRound className="size-4 mr-2" /> Đổi mật khẩu
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { logout(); nav({ to: "/login" }); }}>
+                <DropdownMenuItem onClick={async () => { await logoutFn({ data: { code: user.code }}); setUser(null); nav({ to: "/login" }); }}>
                   <LogOut className="size-4 mr-2" /> Đăng xuất
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -179,8 +182,17 @@ function ChangePasswordDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 interface Notif { id: string; title: string; desc?: string; kind: "info" | "warn" | "success"; at?: string; }
 
 function useNotifications(): Notif[] {
-  const { user, events, members, fees, training, audit, classes } = useStore();
-  if (!user) return [];
+  const { user } = useStore();
+  
+  const { data } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+    enabled: !!user,
+    staleTime: 60000, // 1 minute
+  });
+  
+  if (!user || !data) return [];
+  const { events, members, fees, training, audit, classes } = data;
   const list: Notif[] = [];
   const now = Date.now();
   const inScope = (facultyId?: string) => {
@@ -237,9 +249,9 @@ function useNotifications(): Notif[] {
     list.push({ id: "fo-info", kind: "info", title: "Phạm vi quản lý", desc: `${cls} chi đoàn thuộc khoa` });
   }
   if (user.role === "inspection_officer" || user.role === "admin") {
-    audit.slice(0, 3).forEach((a) =>
-      list.push({ id: `au-${a.id}`, kind: "info", title: a.action, desc: a.target, at: a.at }),
-    );
+    audit.slice(0, 10).forEach((a: any) => {
+      list.push({ id: `au-${a.id}`, kind: "info", title: a.action, desc: a.target, at: a.at });
+    });
   }
   return list.slice(0, 20);
 }
@@ -291,17 +303,16 @@ function NotificationsBell() {
 }
 
 function ChangePasswordDialogImpl({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { changePassword } = useStore();
   const [oldP, setOldP] = useState("");
   const [newP, setNewP] = useState("");
   const [conf, setConf] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newP !== conf) { setErr("Mật khẩu xác nhận không khớp."); return; }
-    const r = changePassword(oldP, newP);
-    if (r) { setErr(r); return; }
+    if (newP.length < 6) { setErr("Mật khẩu mới phải có ít nhất 6 ký tự."); return; }
+    await changePasswordFn();
     toast.success("Đổi mật khẩu thành công");
     setOldP(""); setNewP(""); setConf(""); setErr(null);
     onOpenChange(false);

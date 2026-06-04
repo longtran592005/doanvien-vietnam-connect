@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
+import { toggleFeeFn } from "@/lib/api/fees.functions";
 import { can } from "@/lib/permissions";
 import { NoAccess } from "./app.organization";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,17 +16,29 @@ import { Search, Wallet, Check, X } from "lucide-react";
 export const Route = createFileRoute("/app/fees")({ component: FeesPage });
 
 function FeesPage() {
-  const { user, members, fees, faculties, classes, toggleFee } = useStore();
+  const { user } = useStore();
   if (!can(user?.role, "fees.view")) return <NoAccess />;
   const canManage = can(user?.role, "fees.manage");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
+
+  const queryClient = useQueryClient();
+  const toggleMut = useMutation({
+    mutationFn: (id: string) => toggleFeeFn({ data: { id, actor: user?.code } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard-data"] }),
+  });
 
   const [q, setQ] = useState("");
   const [facFilter, setFacFilter] = useState("all");
   const [status, setStatus] = useState("all");
 
   const rows = useMemo(() => {
-    return fees.map((f) => {
-      const m = members.find((x) => x.id === f.memberId)!;
+    if (!data) return [];
+    return data.fees.map((f) => {
+      const m = data.members.find((x) => x.id === f.memberId)!;
       return { fee: f, member: m };
     }).filter(({ member, fee }) => {
       if (!member) return false;
@@ -36,10 +51,13 @@ function FeesPage() {
       }
       return true;
     });
-  }, [fees, members, q, facFilter, status]);
+  }, [data, q, facFilter, status]);
 
   const totalPaid = rows.filter((r) => r.fee.paid).reduce((s, r) => s + r.fee.amount, 0);
   const totalDue = rows.filter((r) => !r.fee.paid).reduce((s, r) => s + r.fee.amount, 0);
+
+  if (isLoading || !data) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
+  const { faculties, classes } = data;
 
   return (
     <div className="space-y-6">
@@ -107,7 +125,7 @@ function FeesPage() {
                       </td>
                       <td className="px-3 py-2 text-right">
                         {canManage && (
-                          <Button size="sm" variant={fee.paid ? "ghost" : "outline"} onClick={() => toggleFee(fee.id)}>
+                          <Button size="sm" variant={fee.paid ? "ghost" : "outline"} onClick={() => toggleMut.mutate(fee.id)}>
                             {fee.paid ? <><X className="size-3.5 mr-1" /> Hủy</> : <><Check className="size-3.5 mr-1" /> Đánh dấu nộp</>}
                           </Button>
                         )}

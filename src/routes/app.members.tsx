@@ -1,6 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
+import { addMemberFn } from "@/lib/api/members.functions";
 import { scopedMembers } from "@/lib/scope";
 import { classify, CLASSIFICATION_LABELS, PARTY_LABELS } from "@/lib/types";
 import type { PartyStatus } from "@/lib/types";
@@ -20,7 +23,13 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/app/members")({ component: MembersPage });
 
 function MembersPage() {
-  const { user, members, faculties, classes } = useStore();
+  const { user } = useStore();
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
+
   const [q, setQ] = useState("");
   const [facFilter, setFacFilter] = useState("all");
   const [clsFilter, setClsFilter] = useState("all");
@@ -28,7 +37,8 @@ function MembersPage() {
   const allowedAdd = can(user?.role, "members.edit");
 
   const list = useMemo(() => {
-    let l = scopedMembers(members, user!);
+    if (!data) return [];
+    let l = scopedMembers(data.members, user!);
     if (facFilter !== "all") l = l.filter((m) => m.facultyId === facFilter);
     if (clsFilter !== "all") l = l.filter((m) => m.classId === clsFilter);
     if (q.trim()) {
@@ -36,7 +46,10 @@ function MembersPage() {
       l = l.filter((m) => m.fullName.toLowerCase().includes(s) || m.code.toLowerCase().includes(s));
     }
     return l;
-  }, [members, user, q, facFilter, clsFilter]);
+  }, [data, user, q, facFilter, clsFilter]);
+
+  if (isLoading || !data) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
+  const { faculties, classes } = data;
 
   return (
     <div className="space-y-6">
@@ -140,7 +153,26 @@ function MembersPage() {
 }
 
 function AddMemberDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { user, faculties, classes, members, addMember } = useStore();
+  const { user } = useStore();
+  
+  const { data } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
+  const faculties = data?.faculties ?? [];
+  const classes = data?.classes ?? [];
+  const members = data?.members ?? [];
+  
+  const queryClient = useQueryClient();
+  const addMutation = useMutation({
+    mutationFn: (m: any) => addMemberFn({ data: m }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
+      toast.success("Đã thêm đoàn viên mới");
+      onOpenChange(false);
+    }
+  });
+
   const isFac = user?.role === "faculty_officer";
   const isCls = user?.role === "class_secretary";
 
@@ -204,7 +236,7 @@ function AddMemberDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   const submit = (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
-    addMember({
+    addMutation.mutate({
       code: form.code.trim(),
       fullName: form.fullName.trim(),
       dob: form.dob,
@@ -219,8 +251,6 @@ function AddMemberDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
       feePaid: false,
       role: "member",
     });
-    toast.success("Đã thêm đoàn viên mới");
-    onOpenChange(false);
   };
 
   return (

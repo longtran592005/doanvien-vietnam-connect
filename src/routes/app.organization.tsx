@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
+import { addFacultyFn, renameFacultyFn, deleteFacultyFn, addClassFn, renameClassFn, deleteClassFn } from "@/lib/api/organization.functions";
 import { can } from "@/lib/permissions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,8 +22,23 @@ import type { ClassUnit, Faculty } from "@/lib/types";
 export const Route = createFileRoute("/app/organization")({ component: Org });
 
 function Org() {
-  const { user, faculties, classes, members, addFaculty, renameFaculty, deleteFaculty, addClass, renameClass, deleteClass } = useStore();
+  const { user } = useStore();
   const allowed = can(user?.role, "org.manage");
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
+
+  const queryClient = useQueryClient();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
+
+  const addFacMut = useMutation({ mutationFn: (d: any) => addFacultyFn({ data: d }), onSuccess: invalidate });
+  const renFacMut = useMutation({ mutationFn: (d: any) => renameFacultyFn({ data: d }), onSuccess: invalidate });
+  const delFacMut = useMutation({ mutationFn: (d: any) => deleteFacultyFn({ data: d }), onSuccess: invalidate });
+  const addClsMut = useMutation({ mutationFn: (d: any) => addClassFn({ data: d }), onSuccess: invalidate });
+  const renClsMut = useMutation({ mutationFn: (d: any) => renameClassFn({ data: d }), onSuccess: invalidate });
+  const delClsMut = useMutation({ mutationFn: (d: any) => deleteClassFn({ data: d }), onSuccess: invalidate });
   const [openFac, setOpenFac] = useState(false);
   const [openCls, setOpenCls] = useState(false);
   const [facName, setFacName] = useState(""); const [facCode, setFacCode] = useState("");
@@ -31,6 +49,8 @@ function Org() {
   const [delCls, setDelCls] = useState<ClassUnit | null>(null);
 
   if (!allowed) return <NoAccess />;
+  if (isLoading || !data) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
+  const { faculties, classes, members } = data;
 
   return (
     <div className="space-y-6">
@@ -55,7 +75,7 @@ function Org() {
                 <Button variant="ghost" onClick={() => setOpenFac(false)}>Hủy</Button>
                 <Button onClick={() => {
                   if (!facName.trim() || !facCode.trim()) { toast.error("Vui lòng nhập đủ thông tin"); return; }
-                  addFaculty(facName.trim(), facCode.trim().toUpperCase());
+                  addFacMut.mutate({ name: facName.trim(), code: facCode.trim().toUpperCase() });
                   setFacName(""); setFacCode(""); setOpenFac(false); toast.success("Đã thêm khoa");
                 }}>Lưu</Button>
               </DialogFooter>
@@ -81,7 +101,7 @@ function Org() {
                 <Button variant="ghost" onClick={() => setOpenCls(false)}>Hủy</Button>
                 <Button onClick={() => {
                   if (!clsName.trim() || !clsFaculty) { toast.error("Vui lòng nhập đủ thông tin"); return; }
-                  addClass(clsName.trim(), clsFaculty);
+                  addClsMut.mutate({ name: clsName.trim(), facultyId: clsFaculty });
                   setClsName(""); setClsFaculty(""); setOpenCls(false); toast.success("Đã thêm lớp");
                 }}>Lưu</Button>
               </DialogFooter>
@@ -134,12 +154,12 @@ function Org() {
       <EditFacultyDialog
         faculty={editFac}
         onClose={() => setEditFac(null)}
-        onSave={(name) => { renameFaculty(editFac!.id, name); toast.success("Đã cập nhật khoa"); setEditFac(null); }}
+        onSave={(name) => { renFacMut.mutate({ id: editFac!.id, name }); toast.success("Đã cập nhật khoa"); setEditFac(null); }}
       />
       <EditClassDialog
         cls={editCls}
         onClose={() => setEditCls(null)}
-        onSave={(name) => { renameClass(editCls!.id, name); toast.success("Đã cập nhật lớp"); setEditCls(null); }}
+        onSave={(name) => { renClsMut.mutate({ id: editCls!.id, name }); toast.success("Đã cập nhật lớp"); setEditCls(null); }}
       />
 
       <AlertDialog open={!!delFac} onOpenChange={(o) => !o && setDelFac(null)}>
@@ -157,7 +177,7 @@ function Org() {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { if (delFac) { deleteFaculty(delFac.id); toast.success("Đã xóa khoa"); setDelFac(null); } }}
+              onClick={() => { if (delFac) { delFacMut.mutate({ id: delFac.id }); toast.success("Đã xóa khoa"); setDelFac(null); } }}
             >
               Xóa
             </AlertDialogAction>
@@ -180,7 +200,7 @@ function Org() {
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => { if (delCls) { deleteClass(delCls.id); toast.success("Đã xóa lớp"); setDelCls(null); } }}
+              onClick={() => { if (delCls) { delClsMut.mutate({ id: delCls.id }); toast.success("Đã xóa lớp"); setDelCls(null); } }}
             >
               Xóa
             </AlertDialogAction>
@@ -225,7 +245,8 @@ function EditFacultyDialog({ faculty, onClose, onSave }: { faculty: Faculty | nu
 }
 
 function EditClassDialog({ cls, onClose, onSave }: { cls: ClassUnit | null; onClose: () => void; onSave: (name: string) => void }) {
-  const { faculties } = useStore();
+  const { data } = useQuery({ queryKey: ["dashboard-data"], queryFn: () => getDashboardDataFn() });
+  const faculties = data?.faculties ?? [];
   const [name, setName] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const fac = faculties.find((f) => f.id === cls?.facultyId);

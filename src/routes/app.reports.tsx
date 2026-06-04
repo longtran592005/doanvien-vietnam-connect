@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
 import { can } from "@/lib/permissions";
 import { NoAccess } from "./app.organization";
 import { classify, CLASSIFICATION_LABELS, PARTY_LABELS } from "@/lib/types";
@@ -13,16 +15,24 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/app/reports")({ component: ReportsPage });
 
 function ReportsPage() {
-  const { user, members, faculties, classes } = useStore();
+  const { user } = useStore();
   if (!can(user?.role, "reports.view")) return <NoAccess />;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
 
   const [facFilter, setFacFilter] = useState("all");
   const [clsFilter, setClsFilter] = useState("all");
 
-  const list = useMemo(() => members.filter((m) =>
-    (facFilter === "all" || m.facultyId === facFilter) &&
-    (clsFilter === "all" || m.classId === clsFilter),
-  ), [members, facFilter, clsFilter]);
+  const list = useMemo(() => {
+    if (!data) return [];
+    return data.members.filter((m) =>
+      (facFilter === "all" || m.facultyId === facFilter) &&
+      (clsFilter === "all" || m.classId === clsFilter),
+    );
+  }, [data, facFilter, clsFilter]);
 
   const exportCSV = () => {
     const headers = ["Mã SV", "Họ tên", "Lớp", "Khoa", "Điện thoại", "Email", "Điểm RL", "Xếp loại", "Trạng thái Đảng", "Đoàn phí"];
@@ -43,6 +53,9 @@ function ReportsPage() {
     a.click(); URL.revokeObjectURL(url);
     toast.success("Đã xuất " + list.length + " bản ghi");
   };
+
+  if (isLoading || !data) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
+  const { faculties, classes, members } = data;
 
   return (
     <div className="space-y-6">

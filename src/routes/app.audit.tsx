@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useStore } from "@/lib/store";
+import { useQuery } from "@tanstack/react-query";
+import { getAuditLogsFn } from "@/lib/api/audit.functions";
 import { can } from "@/lib/permissions";
 import { NoAccess } from "./app.organization";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,8 +10,15 @@ import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/app/audit")({ component: AuditPage });
 
 function AuditPage() {
-  const { user, audit } = useStore();
+  const { user } = useStore();
   if (!can(user?.role, "audit.view")) return <NoAccess />;
+
+  const { data: audit, isLoading } = useQuery({
+    queryKey: ["audit"],
+    queryFn: () => getAuditLogsFn(),
+  });
+
+  if (isLoading || !audit) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
 
   return (
     <div className="space-y-6">

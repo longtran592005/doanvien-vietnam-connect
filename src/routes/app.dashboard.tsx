@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useStore } from "@/lib/store";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardDataFn } from "@/lib/api/audit.functions";
 import { classify, CLASSIFICATION_LABELS } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Users, CalendarCheck, ClipboardCheck, Wallet, AlertCircle, Calendar } from "lucide-react";
@@ -15,7 +17,16 @@ export const Route = createFileRoute("/app/dashboard")({ component: Dashboard })
 const PIE_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
 
 function Dashboard() {
-  const { members, events, fees, faculties } = useStore();
+  const { data, isLoading } = useQuery({
+    queryKey: ["dashboard-data"],
+    queryFn: () => getDashboardDataFn(),
+  });
+
+  if (isLoading || !data) {
+    return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
+  }
+
+  const { members, events, fees, faculties } = data;
 
   const totalMembers = members.length;
   const activeEvents = events.filter((e) => e.status === "approved").length;

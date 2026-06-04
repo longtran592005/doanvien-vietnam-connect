@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useStore, DEFAULT_PWD } from "@/lib/store";
+import { loginFn } from "@/lib/api/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,7 @@ const REMEMBER_KEY = "tbu_remember_code";
 export const Route = createFileRoute("/login")({ component: LoginPage });
 
 function LoginPage() {
-  const { login } = useStore();
+  const { setUser } = useStore();
   const nav = useNavigate();
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -34,16 +35,19 @@ function LoginPage() {
     } catch {}
   }, []);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim() || !password.trim()) {
       setErr("Vui lòng nhập đầy đủ thông tin.");
       return;
     }
-    const error = login(code.trim(), password);
-    if (error) {
-      setErr(error);
+    const result = await loginFn({ data: { code: code.trim(), password } });
+    if (result.error) {
+      setErr(result.error);
       return;
+    }
+    if (result.user) {
+      setUser(result.user);
     }
     try {
       if (remember) localStorage.setItem(REMEMBER_KEY, code.trim());
