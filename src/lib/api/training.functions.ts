@@ -1,26 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getStore, logAudit } from "../db.server";
-import type { TrainingLog } from "../types";
+import { prisma, logAudit } from "../db.server";
 
 export const getTrainingLogsFn = createServerFn({ method: "GET" }).handler(async () => {
-  return getStore().training;
+  return await prisma.trainingLog.findMany({ orderBy: { date: 'desc' } });
 });
 
 export const addTrainingLogFn = createServerFn({ method: "POST" })
   .inputValidator(z.any())
   .handler(async ({ data }) => {
-    const store = getStore();
-    const newLog = { ...data, id: `t${Date.now()}` } as TrainingLog;
-    store.training.unshift(newLog);
+    const { id, ...rest } = data;
+    await prisma.trainingLog.create({
+      data: {
+        ...rest
+      }
+    });
     
     // Update member's score
-    store.members = store.members.map((m) =>
-      m.id === data.memberId
-        ? { ...m, trainingScore: Math.max(0, Math.min(100, m.trainingScore + data.delta)) }
-        : m,
-    );
+    const member = await prisma.member.findUnique({ where: { id: data.memberId } });
+    if (member) {
+      await prisma.member.update({
+        where: { id: data.memberId },
+        data: { trainingScore: Math.max(0, Math.min(100, member.trainingScore + data.delta)) }
+      });
+    }
     
-    logAudit(data.type === "reward" ? "Cộng điểm rèn luyện" : "Trừ điểm rèn luyện", data.createdBy || "system", data.memberId);
+    await logAudit(data.type === "reward" ? "Cộng điểm rèn luyện" : "Trừ điểm rèn luyện", data.createdBy || "system", data.memberId);
     return { success: true };
   });

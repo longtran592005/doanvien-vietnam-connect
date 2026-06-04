@@ -1,35 +1,25 @@
-import type { AuditLog, ClassUnit, EventItem, Faculty, FeeRecord, Member, TrainingLog } from "./types";
-import { seedData } from "./seed.server";
+import { PrismaClient } from '@prisma/client'
 
-export interface DataStore {
-  faculties: Faculty[];
-  classes: ClassUnit[];
-  members: Member[];
-  events: EventItem[];
-  training: TrainingLog[];
-  fees: FeeRecord[];
-  audit: AuditLog[];
+// Ngăn việc tạo nhiều instance Prisma trong môi trường dev
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
 }
 
-let store: DataStore | null = null;
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
 
-export function getStore(): DataStore {
-  if (!store) {
-    store = seedData();
-  }
-  return store;
-}
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-export function logAudit(action: string, actor: string, target?: string) {
-  const s = getStore();
-  s.audit.unshift({
-    id: `a${Date.now()}`,
-    at: new Date().toISOString(),
-    actor,
-    action,
-    target,
-  });
-  if (s.audit.length > 500) {
-    s.audit = s.audit.slice(0, 500);
+export async function logAudit(action: string, actor: string, target?: string) {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        at: new Date().toISOString(),
+        actor,
+        action,
+        target: target || "",
+      }
+    });
+  } catch (err) {
+    console.error("Failed to log audit", err);
   }
 }

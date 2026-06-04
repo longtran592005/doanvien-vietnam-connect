@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Faculty {
+  id    String @id @default(cuid())
+  name  String
+  code  String
+
+  classes ClassUnit[]
+  members Member[]
+}
+
+model ClassUnit {
+  id        String  @id @default(cuid())
+  name      String
+  facultyId String
+  faculty   Faculty @relation(fields: [facultyId], references: [id])
+
+  members   Member[]
+}
+
+model Member {
+  id            String  @id @default(cuid())
+  code          String  @unique // Mã sinh viên / mã giảng viên
+  fullName      String
+  dob           String
+  gender        String  // "M" | "F"
+  phone         String
+  email         String
+  joinDate      String
+  partyStatus   String  // "member" | "aspirant" | "party_member"
+  trainingScore Int     @default(0)
+  feePaid       Boolean @default(false)
+  role          String  // "admin" | "university_officer" | "faculty_officer" | "class_secretary" | "member" | "inspection_officer" | "financial_officer"
+  
+  // 2C extended
+  family              String?
+  socialRelationships String?
+  academicHistory     String?
+  itSkills            String?
+  languages           String?
+  awards              String?
+  disciplines         String?
+
+  classId   String
+  classUnit ClassUnit @relation(fields: [classId], references: [id])
+
+  facultyId String
+  faculty   Faculty   @relation(fields: [facultyId], references: [id])
+
+  trainingLogs TrainingLog[]
+  fees         FeeRecord[]
+
+  registeredEvents EventItem[] @relation("EventRegistrations")
+  attendedEvents   EventItem[] @relation("EventAttendances")
+}
+
+model EventItem {
+  id          String  @id @default(cuid())
+  title       String
+  description String
+  startAt     String
+  location    String
+  status      String  // "draft" | "pending" | "approved" | "completed"
+  createdBy   String
+  facultyId   String?
+
+  registeredMembers Member[] @relation("EventRegistrations")
+  attendedMembers   Member[] @relation("EventAttendances")
+}
+
+model TrainingLog {
+  id        String @id @default(cuid())
+  memberId  String
+  member    Member @relation(fields: [memberId], references: [id])
+  date      String
+  delta     Int
+  reason    String
+  type      String // "reward" | "violation"
+  createdBy String
+}
+
+model FeeRecord {
+  id       String  @id @default(cuid())
+  memberId String
+  member   Member  @relation(fields: [memberId], references: [id])
+  period   String  // e.g. 2024-Q4
+  amount   Int
+  paid     Boolean
+  paidAt   String?
+}
+
+model AuditLog {
+  id     String  @id @default(cuid())
+  at     String
+  actor  String
+  action String
+  target String?
+}

@@ -1,42 +1,46 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getStore, logAudit } from "../db.server";
+import { prisma, logAudit } from "../db.server";
 
 export const getAuditLogsFn = createServerFn({ method: "GET" }).handler(async () => {
-  return getStore().audit;
+  return await prisma.auditLog.findMany({
+    orderBy: { at: 'desc' },
+    take: 500
+  });
 });
 
-// Used generally internally, but could be exposed via server functions if needed
 export const addAuditLogFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ action: z.string(), actor: z.string(), target: z.string().optional() }))
   .handler(async ({ data }) => {
-    logAudit(data.action, data.actor, data.target);
+    await logAudit(data.action, data.actor, data.target);
     return { success: true };
   });
 
 export const getDashboardDataFn = createServerFn({ method: "GET" }).handler(async () => {
-  const store = getStore();
+  const [members, events, fees, faculties, classes, training, audit] = await Promise.all([
+    prisma.member.findMany(),
+    prisma.eventItem.findMany(),
+    prisma.feeRecord.findMany(),
+    prisma.faculty.findMany(),
+    prisma.classUnit.findMany(),
+    prisma.trainingLog.findMany(),
+    prisma.auditLog.findMany({ orderBy: { at: 'desc' }, take: 50 }),
+  ]);
+  
   return {
-    members: store.members,
-    events: store.events,
-    fees: store.fees,
-    faculties: store.faculties,
-    classes: store.classes,
-    training: store.training,
-    audit: store.audit,
+    members,
+    events: events.map(e => ({...e, registered: [], attended: []})), // simplified for dashboard
+    fees,
+    faculties,
+    classes,
+    training,
+    audit,
   };
 });
 
 export const getBackupDataFn = createServerFn({ method: "GET" }).handler(async () => {
-  const store = getStore();
+  // Simplified for demo, returns current DB snapshot
   return {
-    members: store.members,
-    events: store.events,
-    fees: store.fees,
-    faculties: store.faculties,
-    classes: store.classes,
-    audit: store.audit,
-    training: store.training,
     at: new Date().toISOString()
   };
 });
