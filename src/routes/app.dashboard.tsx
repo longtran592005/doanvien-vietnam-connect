@@ -98,7 +98,24 @@ function Dashboard() {
                 <Pie data={classifData} dataKey="value" nameKey="name" outerRadius={80} innerRadius={40} paddingAngle={2}>
                   {classifData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend
+                  formatter={(value, entry: any) => (
+                    <span style={{ color: "var(--foreground)", fontSize: 12 }}>{value}</span>
+                  )}
+                  iconType="circle"
+                  iconSize={10}
+                  wrapperStyle={{ fontSize: 12 }}
+                  content={({ payload }) => (
+                    <ul className="flex flex-wrap gap-x-3 gap-y-1 justify-center mt-2">
+                      {payload?.map((entry: any, i: number) => (
+                        <li key={i} className="flex items-center gap-1.5 text-xs">
+                          <span className="inline-block size-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                          <span className="text-foreground/80">{entry.value}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                />
                 <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }} />
               </PieChart>
             </ResponsiveContainer>

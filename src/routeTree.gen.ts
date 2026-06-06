@@ -21,7 +21,9 @@ import { Route as AppFeesRouteImport } from './routes/app.fees'
 import { Route as AppEventsRouteImport } from './routes/app.events'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppAuditRouteImport } from './routes/app.audit'
+import { Route as AppAccountsRouteImport } from './routes/app.accounts'
 import { Route as AppMembersIdRouteImport } from './routes/app.members.$id'
+import { Route as AppCheckinEventIdRouteImport } from './routes/app.checkin.$eventId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -83,16 +85,27 @@ const AppAuditRoute = AppAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAccountsRoute = AppAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppMembersIdRoute = AppMembersIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AppMembersRoute,
+} as any)
+const AppCheckinEventIdRoute = AppCheckinEventIdRouteImport.update({
+  id: '/checkin/$eventId',
+  path: '/checkin/$eventId',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/accounts': typeof AppAccountsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/events': typeof AppEventsRoute
@@ -102,12 +115,14 @@ export interface FileRoutesByFullPath {
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/training': typeof AppTrainingRoute
+  '/app/checkin/$eventId': typeof AppCheckinEventIdRoute
   '/app/members/$id': typeof AppMembersIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/accounts': typeof AppAccountsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/events': typeof AppEventsRoute
@@ -117,6 +132,7 @@ export interface FileRoutesByTo {
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/training': typeof AppTrainingRoute
+  '/app/checkin/$eventId': typeof AppCheckinEventIdRoute
   '/app/members/$id': typeof AppMembersIdRoute
 }
 export interface FileRoutesById {
@@ -124,6 +140,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/accounts': typeof AppAccountsRoute
   '/app/audit': typeof AppAuditRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/events': typeof AppEventsRoute
@@ -133,6 +150,7 @@ export interface FileRoutesById {
   '/app/reports': typeof AppReportsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/training': typeof AppTrainingRoute
+  '/app/checkin/$eventId': typeof AppCheckinEventIdRoute
   '/app/members/$id': typeof AppMembersIdRoute
 }
 export interface FileRouteTypes {
@@ -141,6 +159,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/accounts'
     | '/app/audit'
     | '/app/dashboard'
     | '/app/events'
@@ -150,12 +169,14 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/app/settings'
     | '/app/training'
+    | '/app/checkin/$eventId'
     | '/app/members/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/app'
     | '/login'
+    | '/app/accounts'
     | '/app/audit'
     | '/app/dashboard'
     | '/app/events'
@@ -165,12 +186,14 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/app/settings'
     | '/app/training'
+    | '/app/checkin/$eventId'
     | '/app/members/$id'
   id:
     | '__root__'
     | '/'
     | '/app'
     | '/login'
+    | '/app/accounts'
     | '/app/audit'
     | '/app/dashboard'
     | '/app/events'
@@ -180,6 +203,7 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/app/settings'
     | '/app/training'
+    | '/app/checkin/$eventId'
     | '/app/members/$id'
   fileRoutesById: FileRoutesById
 }
@@ -275,12 +299,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/accounts': {
+      id: '/app/accounts'
+      path: '/accounts'
+      fullPath: '/app/accounts'
+      preLoaderRoute: typeof AppAccountsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/members/$id': {
       id: '/app/members/$id'
       path: '/$id'
       fullPath: '/app/members/$id'
       preLoaderRoute: typeof AppMembersIdRouteImport
       parentRoute: typeof AppMembersRoute
+    }
+    '/app/checkin/$eventId': {
+      id: '/app/checkin/$eventId'
+      path: '/checkin/$eventId'
+      fullPath: '/app/checkin/$eventId'
+      preLoaderRoute: typeof AppCheckinEventIdRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
@@ -298,6 +336,7 @@ const AppMembersRouteWithChildren = AppMembersRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppAccountsRoute: typeof AppAccountsRoute
   AppAuditRoute: typeof AppAuditRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppEventsRoute: typeof AppEventsRoute
@@ -307,9 +346,11 @@ interface AppRouteChildren {
   AppReportsRoute: typeof AppReportsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTrainingRoute: typeof AppTrainingRoute
+  AppCheckinEventIdRoute: typeof AppCheckinEventIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAccountsRoute: AppAccountsRoute,
   AppAuditRoute: AppAuditRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppEventsRoute: AppEventsRoute,
@@ -319,6 +360,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppReportsRoute: AppReportsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTrainingRoute: AppTrainingRoute,
+  AppCheckinEventIdRoute: AppCheckinEventIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

@@ -80,6 +80,8 @@ export interface EventItem {
   attended: string[];
   createdBy: string;
   facultyId?: string;
+  enableQr: boolean;
+  bonusPoints: number;
 }
 
 export interface TrainingLog {

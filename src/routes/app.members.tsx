@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDashboardDataFn } from "@/lib/api/audit.functions";
 import { addMemberFn } from "@/lib/api/members.functions";
+import { importMembersFromExcelFn, exportMembersToExcelFn } from "@/lib/api/import.functions";
 import { scopedMembers } from "@/lib/scope";
 import { classify, CLASSIFICATION_LABELS, PARTY_LABELS } from "@/lib/types";
 import type { PartyStatus } from "@/lib/types";
@@ -13,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Eye, UserPlus } from "lucide-react";
+import { Search, Eye, UserPlus, Upload, Download, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -22,8 +23,23 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/members")({ component: MembersPage });
 
+/* ───────────────────────────── helpers ───────────────────────────── */
+function downloadBase64(base64: string, filename: string) {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function MembersPage() {
   const { user } = useStore();
+  const queryClient = useQueryClient();
   
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-data"],
@@ -34,7 +50,23 @@ function MembersPage() {
   const [facFilter, setFacFilter] = useState("all");
   const [clsFilter, setClsFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const allowedAdd = can(user?.role, "members.edit");
+
+  /* ── Export Excel ── */
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await exportMembersToExcelFn();
+      downloadBase64(res.base64, `doan-vien-${new Date().toISOString().slice(0,10)}.xlsx`);
+      toast.success(`Đã xuất ${res.count} đoàn viên ra file Excel`);
+    } catch (e: any) {
+      toast.error("Lỗi xuất Excel: " + (e.message || "Không rõ"));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const list = useMemo(() => {
     if (!data) return [];
@@ -58,11 +90,22 @@ function MembersPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Đoàn viên</h1>
           <p className="text-sm text-muted-foreground">Danh sách hồ sơ Đoàn viên (Mẫu 2C)</p>
         </div>
-        {allowedAdd && (
-          <Button onClick={() => setAddOpen(true)}>
-            <UserPlus className="size-4 mr-1.5" /> Thêm đoàn viên
-          </Button>
-        )}
+        <div className="flex gap-2 flex-wrap">
+          {allowedAdd && (
+            <>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="size-4 mr-1.5" /> Import Excel
+              </Button>
+              <Button variant="outline" onClick={handleExport} disabled={exporting}>
+                {exporting ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Download className="size-4 mr-1.5" />}
+                Export Excel
+              </Button>
+              <Button onClick={() => setAddOpen(true)}>
+                <UserPlus className="size-4 mr-1.5" /> Thêm đoàn viên
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -148,7 +191,129 @@ function MembersPage() {
       </Card>
 
       <AddMemberDialog open={addOpen} onOpenChange={setAddOpen} />
+      <ImportExcelDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
+  );
+}
+
+/* ─────────── Import Excel Dialog ─────────── */
+function ImportExcelDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { user } = useStore();
+  const queryClient = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<{ imported?: number; skipped?: number; errors?: string[]; error?: string } | null>(null);
+
+  const importMut = useMutation({
+    mutationFn: async (base64: string) => importMembersFromExcelFn({ data: { base64, actor: user?.code } }),
+    onSuccess: (res: any) => {
+      if (res.error) {
+        setResult({ error: res.error });
+        toast.error(res.error);
+        return;
+      }
+      setResult(res);
+      queryClient.invalidateQueries({ queryKey: ["dashboard-data"] });
+      toast.success(`Import thành công: ${res.imported} đoàn viên`);
+    },
+    onError: (e: any) => {
+      setResult({ error: e.message || "Lỗi không rõ" });
+    },
+  });
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) { setFile(f); setResult(null); }
+  };
+
+  const handleImport = () => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const buf = ev.target?.result as ArrayBuffer;
+      const base64 = btoa(
+        new Uint8Array(buf).reduce((d, b) => d + String.fromCharCode(b), ""),
+      );
+      importMut.mutate(base64);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  useEffect(() => {
+    if (open) { setFile(null); setResult(null); }
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="size-5 text-primary" /> Import Excel
+          </DialogTitle>
+          <DialogDescription>
+            Tải lên file <code>.xlsx</code> theo mẫu. Hệ thống sẽ tự động thêm/cập nhật đoàn viên.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* Template note */}
+          <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4 space-y-2">
+            <p className="text-sm font-medium text-primary">Cột file Excel mẫu:</p>
+            <p className="text-xs text-muted-foreground font-mono leading-relaxed">
+              Mã SV | Họ tên | Ngày sinh | Giới tính | Khoa (mã) | Lớp | SĐT | Email | Ngày vào Đoàn | Trạng thái Đảng | Điểm RL | Đoàn phí
+            </p>
+            <p className="text-xs text-muted-foreground">
+              💡 Mẹo: Xuất file Excel hiện tại rồi dùng làm mẫu để import.
+            </p>
+          </div>
+
+          {/* File input */}
+          <div
+            className="relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/25 p-8 cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="size-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              {file ? file.name : "Nhấn để chọn file .xlsx"}
+            </p>
+            {file && <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>}
+            <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
+          </div>
+
+          {/* Result */}
+          {result && !result.error && (
+            <div className="space-y-2">
+              <div className="flex gap-4 text-sm">
+                <span className="flex items-center gap-1 text-green-600"><CheckCircle2 className="size-4" /> {result.imported} thành công</span>
+                {(result.skipped ?? 0) > 0 && (
+                  <span className="flex items-center gap-1 text-amber-600"><AlertTriangle className="size-4" /> {result.skipped} bỏ qua</span>
+                )}
+              </div>
+              {result.errors && result.errors.length > 0 && (
+                <div className="max-h-32 overflow-y-auto rounded border bg-muted/50 p-2 space-y-1">
+                  {result.errors.map((e, i) => (
+                    <p key={i} className="text-xs text-destructive">{e}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {result?.error && (
+            <p className="text-sm text-destructive flex items-center gap-1">
+              <AlertTriangle className="size-4" /> {result.error}
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Đóng</Button>
+          <Button onClick={handleImport} disabled={!file || importMut.isPending}>
+            {importMut.isPending ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Upload className="size-4 mr-1.5" />}
+            Import
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

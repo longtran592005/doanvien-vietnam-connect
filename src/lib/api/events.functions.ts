@@ -29,6 +29,8 @@ export const addEventFn = createServerFn({ method: "POST" })
         status: data.status,
         createdBy: data.createdBy || "system",
         facultyId: data.facultyId,
+        enableQr: data.enableQr ?? false,
+        bonusPoints: data.bonusPoints ?? 5,
       }
     });
     await logAudit("Tạo hoạt động", data.createdBy || "system", newEvent.title);
@@ -64,14 +66,36 @@ export const registerEventFn = createServerFn({ method: "POST" })
 export const markAttendedFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ eventId: z.string(), memberId: z.string() }))
   .handler(async ({ data }) => {
-    await prisma.eventItem.update({
-      where: { id: data.eventId },
-      data: {
-        attendedMembers: {
-          connect: { id: data.memberId }
+    const event = await prisma.eventItem.findUnique({ where: { id: data.eventId } });
+    if (!event) return { success: false, error: "Không tìm thấy sự kiện" };
+
+    await prisma.$transaction(async (tx) => {
+      await tx.eventItem.update({
+        where: { id: data.eventId },
+        data: {
+          attendedMembers: { connect: { id: data.memberId } }
         }
+      });
+
+      const member = await tx.member.findUnique({ where: { id: data.memberId } });
+      if (member) {
+        await tx.trainingLog.create({
+          data: {
+            memberId: member.id,
+            date: new Date().toISOString().slice(0, 10),
+            delta: event.bonusPoints,
+            reason: `Tham gia sự kiện: ${event.title}`,
+            type: "reward",
+            createdBy: member.code || "system",
+          },
+        });
+        await tx.member.update({
+          where: { id: member.id },
+          data: { trainingScore: Math.max(0, Math.min(100, member.trainingScore + event.bonusPoints)) }
+        });
       }
     });
-    await logAudit("Điểm danh", data.memberId, `${data.eventId}/${data.memberId}`);
+
+    await logAudit("Tự điểm danh", data.memberId, data.eventId);
     return { success: true };
   });

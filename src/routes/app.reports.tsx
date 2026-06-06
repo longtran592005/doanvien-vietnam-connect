@@ -3,13 +3,14 @@ import { useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardDataFn } from "@/lib/api/audit.functions";
+import { exportMembersToExcelFn } from "@/lib/api/import.functions";
 import { can } from "@/lib/permissions";
 import { NoAccess } from "./app.organization";
 import { classify, CLASSIFICATION_LABELS, PARTY_LABELS } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/reports")({ component: ReportsPage });
@@ -25,6 +26,7 @@ function ReportsPage() {
 
   const [facFilter, setFacFilter] = useState("all");
   const [clsFilter, setClsFilter] = useState("all");
+  const [exporting, setExporting] = useState(false);
 
   const list = useMemo(() => {
     if (!data) return [];
@@ -34,24 +36,26 @@ function ReportsPage() {
     );
   }, [data, facFilter, clsFilter]);
 
-  const exportCSV = () => {
-    const headers = ["Mã SV", "Họ tên", "Lớp", "Khoa", "Điện thoại", "Email", "Điểm RL", "Xếp loại", "Trạng thái Đảng", "Đoàn phí"];
-    const rows = list.map((m) => [
-      m.code, m.fullName,
-      classes.find((c) => c.id === m.classId)?.name ?? "",
-      faculties.find((f) => f.id === m.facultyId)?.name ?? "",
-      m.phone, m.email, m.trainingScore,
-      CLASSIFICATION_LABELS[classify(m.trainingScore)],
-      PARTY_LABELS[m.partyStatus],
-      m.feePaid ? "Đã nộp" : "Chưa nộp",
-    ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `bao-cao-doan-vien-${Date.now()}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    toast.success("Đã xuất " + list.length + " bản ghi");
+  const exportXLSX = async () => {
+    setExporting(true);
+    try {
+      const res = await exportMembersToExcelFn();
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bao-cao-doan-vien-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Đã xuất " + res.count + " bản ghi ra file Excel");
+    } catch (e: any) {
+      toast.error("Lỗi xuất Excel: " + (e.message || "Không rõ"));
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (isLoading || !data) return <div className="p-8 text-center text-muted-foreground">Đang tải dữ liệu...</div>;
@@ -86,7 +90,10 @@ function ReportsPage() {
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button onClick={exportCSV} className="ml-auto"><Download className="size-4 mr-1" /> Xuất CSV / Excel</Button>
+            <Button onClick={exportXLSX} disabled={exporting} className="ml-auto">
+              {exporting ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Download className="size-4 mr-1" />}
+              Xuất Excel (.xlsx)
+            </Button>
           </div>
           <p className="text-sm text-muted-foreground">Sẵn sàng xuất <strong>{list.length}</strong> bản ghi.</p>
         </CardContent>

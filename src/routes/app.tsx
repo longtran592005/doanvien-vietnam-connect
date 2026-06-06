@@ -9,7 +9,7 @@ import { can } from "@/lib/permissions";
 import {
   LayoutDashboard, Users, Network, Award, CalendarDays, Wallet,
   FileBarChart, ShieldAlert, Settings, Bell, LogOut, KeyRound, ChevronDown,
-  Menu, GraduationCap, CheckCircle2, AlertTriangle, Info,
+  Menu, CheckCircle2, AlertTriangle, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +36,7 @@ const NAV: NavItem[] = [
   { to: "/app/fees", label: "Đoàn phí", icon: Wallet, perm: "fees.view" },
   { to: "/app/reports", label: "Báo cáo & Xuất dữ liệu", icon: FileBarChart, perm: "reports.view" },
   { to: "/app/audit", label: "Kiểm tra & Nhật ký", icon: ShieldAlert, perm: "audit.view" },
+  { to: "/app/accounts", label: "Quản lý Tài khoản", icon: KeyRound, perm: "system.admin" },
   { to: "/app/settings", label: "Cấu hình hệ thống", icon: Settings, perm: "system.admin" },
 ];
 
@@ -63,7 +64,7 @@ function AppLayout() {
         sidebarOpen ? "flex translate-x-0" : "hidden md:flex -translate-x-full md:translate-x-0",
       )}>
         <div className="h-16 px-5 flex items-center gap-3 border-b border-sidebar-border">
-          <div className="size-9 rounded-lg bg-primary text-primary-foreground grid place-items-center font-bold">TBU</div>
+          <img src="/logo/logo-doan.png" alt="Logo Đoàn" className="size-9 object-contain" />
           <div className="leading-tight">
             <p className="text-sm font-semibold">QL Đoàn viên</p>
             <p className="text-xs text-muted-foreground">Đại học Thái Bình</p>
@@ -103,13 +104,11 @@ function AppLayout() {
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSidebarOpen((v) => !v)}>
             <Menu className="size-5" />
           </Button>
-          <div className="hidden md:flex items-center gap-2">
-            <div className="size-8 rounded-md bg-primary/10 text-primary grid place-items-center">
-              <GraduationCap className="size-4" />
-            </div>
+          <div className="hidden md:flex items-center gap-3">
+            <img src="/logo/logo-doan.png" alt="Logo Đoàn" className="size-9 object-contain" />
             <div>
               <p className="text-sm font-medium leading-none">Trường Đại học Thái Bình</p>
-              <p className="text-xs text-muted-foreground">Đoàn TNCS Hồ Chí Minh</p>
+              <p className="text-xs text-muted-foreground mt-1">Đoàn TNCS Hồ Chí Minh</p>
             </div>
           </div>
 
@@ -195,7 +194,7 @@ function useNotifications(): Notif[] {
   const { events, members, fees, training, audit, classes } = data;
   const list: Notif[] = [];
   const now = Date.now();
-  const inScope = (facultyId?: string) => {
+  const inScope = (facultyId: string | null | undefined) => {
     if (["admin", "university_officer", "inspection_officer", "financial_officer"].includes(user.role)) return true;
     if (user.role === "faculty_officer") return !facultyId || facultyId === user.facultyId;
     if (user.role === "class_secretary") return !facultyId || facultyId === user.facultyId;

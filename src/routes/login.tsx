@@ -35,26 +35,36 @@ function LoginPage() {
     } catch {}
   }, []);
 
+  const [loading, setLoading] = useState(false);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim() || !password.trim()) {
       setErr("Vui lòng nhập đầy đủ thông tin.");
       return;
     }
-    const result = await loginFn({ data: { code: code.trim(), password } });
-    if (result.error) {
-      setErr(result.error);
-      return;
-    }
-    if (result.user) {
-      setUser(result.user);
-    }
+    setLoading(true);
+    setErr(null);
     try {
-      if (remember) localStorage.setItem(REMEMBER_KEY, code.trim());
-      else localStorage.removeItem(REMEMBER_KEY);
-    } catch {}
-    toast.success("Đăng nhập thành công");
-    nav({ to: "/app/dashboard" });
+      const result = await loginFn({ data: { code: code.trim(), password } });
+      if (result.error) {
+        setErr(result.error);
+        return;
+      }
+      if (result.user) {
+        setUser(result.user);
+      }
+      try {
+        if (remember) localStorage.setItem(REMEMBER_KEY, code.trim());
+        else localStorage.removeItem(REMEMBER_KEY);
+      } catch {}
+      toast.success("Đăng nhập thành công");
+      nav({ to: "/app/dashboard" });
+    } catch (e: any) {
+      setErr("Đã xảy ra lỗi kết nối. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -76,10 +86,14 @@ function LoginPage() {
       <div className="relative w-full max-w-5xl grid md:grid-cols-2 gap-8 items-center">
         <div className="hidden md:block space-y-6">
           <div className="flex items-center gap-4">
-            <TbuEmblem className="size-16 shrink-0" />
+            <div className="flex items-center gap-2 shrink-0">
+              <img src="/logo/tbu-logo.svg" alt="TBU Logo" className="size-16 object-contain" />
+              <img src="/logo/logo-doan.png" alt="Đoàn TNCS HCM Logo" className="size-16 object-contain" />
+            </div>
+            <div className="h-12 w-px bg-border/60 mx-1" />
             <div>
               <p className="text-sm font-medium text-foreground/70">Trường Đại học Thái Bình</p>
-              <h1 className="text-2xl font-semibold tracking-tight">Hệ thống Quản lý Đoàn viên</h1>
+              <h1 className="text-2xl font-semibold tracking-tight leading-tight">Hệ thống Quản lý Đoàn viên</h1>
             </div>
           </div>
           <p className="text-foreground/70 leading-relaxed">
@@ -92,10 +106,14 @@ function LoginPage() {
         <Card className="border-border/60 shadow-lg shadow-primary/5">
           <CardHeader className="space-y-3">
             <div className="md:hidden flex items-center gap-3">
-              <TbuEmblem className="size-12" />
+              <div className="flex items-center gap-1.5">
+                <img src="/logo/tbu-logo.svg" alt="TBU Logo" className="size-10 object-contain" />
+                <img src="/logo/logo-doan.png" alt="Đoàn TNCS HCM Logo" className="size-10 object-contain" />
+              </div>
+              <div className="h-8 w-px bg-border/60 mx-0.5" />
               <div>
                 <p className="text-xs font-medium text-foreground/70">Đại học Thái Bình</p>
-                <p className="text-sm font-semibold">Quản lý Đoàn viên</p>
+                <p className="text-sm font-semibold leading-tight">Quản lý Đoàn viên</p>
               </div>
             </div>
             <div>
@@ -166,7 +184,9 @@ function LoginPage() {
                   {err}
                 </p>
               )}
-              <Button type="submit" className="w-full h-11 font-medium">Đăng nhập</Button>
+              <Button type="submit" className="w-full h-11 font-medium" disabled={loading}>
+                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+              </Button>
               <p className="text-xs text-foreground/60 text-center">
                 Bằng việc đăng nhập, bạn đồng ý với quy định sử dụng hệ thống của Đoàn trường.
               </p>
@@ -180,30 +200,6 @@ function LoginPage() {
   );
 }
 
-function TbuEmblem({ className }: { className?: string }) {
-  return (
-    <div className={`relative ${className ?? ""}`}>
-      <svg viewBox="0 0 64 64" className="w-full h-full drop-shadow-sm">
-        <defs>
-          <linearGradient id="tbuRing" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="oklch(0.55 0.18 255)" />
-            <stop offset="100%" stopColor="oklch(0.42 0.18 255)" />
-          </linearGradient>
-        </defs>
-        <circle cx="32" cy="32" r="30" fill="url(#tbuRing)" />
-        <circle cx="32" cy="32" r="26" fill="none" stroke="oklch(0.95 0.02 90)" strokeWidth="1.2" />
-        {/* Star */}
-        <polygon
-          points="32,11 36,24 49,24 38.5,32 42.5,45 32,37 21.5,45 25.5,32 15,24 28,24"
-          fill="oklch(0.92 0.15 90)"
-        />
-        {/* Banner */}
-        <rect x="14" y="46" width="36" height="9" rx="1.5" fill="oklch(0.98 0.01 90)" />
-        <text x="32" y="52.5" textAnchor="middle" fontSize="6.5" fontWeight="800" fill="oklch(0.35 0.18 255)" fontFamily="system-ui">TBU</text>
-      </svg>
-    </div>
-  );
-}
 
 const DEMO_ACCOUNTS: { code: string; role: string }[] = [
   { code: "ADMIN01", role: "Quản trị viên" },

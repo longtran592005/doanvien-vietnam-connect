@@ -29,7 +29,7 @@ export const getDashboardDataFn = createServerFn({ method: "GET" }).handler(asyn
   
   return {
     members,
-    events: events.map(e => ({...e, registered: [], attended: []})), // simplified for dashboard
+    events: events.map(e => ({...e, registered: [] as string[], attended: [] as string[]})), // simplified for dashboard
     fees,
     faculties,
     classes,
@@ -39,8 +39,15 @@ export const getDashboardDataFn = createServerFn({ method: "GET" }).handler(asyn
 });
 
 export const getBackupDataFn = createServerFn({ method: "GET" }).handler(async () => {
-  // Simplified for demo, returns current DB snapshot
+  const [members, events, audit] = await Promise.all([
+    prisma.member.findMany(),
+    prisma.eventItem.findMany(),
+    prisma.auditLog.findMany({ orderBy: { at: 'desc' }, take: 100 }),
+  ]);
   return {
-    at: new Date().toISOString()
+    at: new Date().toISOString(),
+    members,
+    events,
+    audit,
   };
 });

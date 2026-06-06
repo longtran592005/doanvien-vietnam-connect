@@ -89,6 +89,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       {
+        rel: "icon",
+        href: "/logo/logo-doan.png",
+        type: "image/png",
+      },
+      {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",
       },

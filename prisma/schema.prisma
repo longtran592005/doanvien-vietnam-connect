@@ -59,6 +59,8 @@ model Member {
 
   registeredEvents EventItem[] @relation("EventRegistrations")
   attendedEvents   EventItem[] @relation("EventAttendances")
+  
+  account Account?
 }
 
 model EventItem {
@@ -70,6 +72,8 @@ model EventItem {
   status      String  // "draft" | "pending" | "approved" | "completed"
   createdBy   String
   facultyId   String?
+  enableQr    Boolean @default(false)
+  bonusPoints Int     @default(5)
 
   registeredMembers Member[] @relation("EventRegistrations")
   attendedMembers   Member[] @relation("EventAttendances")
@@ -102,4 +106,21 @@ model AuditLog {
   actor  String
   action String
   target String?
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  code      String   @unique // Mã đăng nhập (SV..., CB...)
+  password  String   // Mật khẩu
+  name      String   // Họ và tên
+  role      String   // Phân quyền (admin, member, etc.)
+  isLocked  Boolean  @default(false)
+  
+  memberId  String?  @unique
+  member    Member?  @relation(fields: [memberId], references: [id])
+  
+  facultyId String?
+  classId   String?
+  
+  createdAt String
 }

@@ -106,6 +106,16 @@ const INITIAL_AUDIT = [
   { id: "a1", at: new Date().toISOString(), actor: "admin", action: "Khởi tạo hệ thống", target: "" },
 ];
 
+const INITIAL_ACCOUNTS = [
+  { id: "u-admin", code: "ADMIN01", name: "Quản trị viên hệ thống", role: "admin", password: "TBU@2026", createdAt: new Date().toISOString() },
+  { id: "u-univ", code: "CB001", name: "Nguyễn Văn Trường", role: "university_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
+  { id: "u-fac", code: "CB101", name: "Trần Thị Khoa", role: "faculty_officer", password: "TBU@2026", facultyId: "f1", createdAt: new Date().toISOString() },
+  { id: "u-sec", code: "SV20210001", name: "Lê Minh Bí Thư", role: "class_secretary", password: "TBU@2026", classId: "c1", facultyId: "f1", memberId: "m1", createdAt: new Date().toISOString() },
+  { id: "u-mem", code: "SV20210002", name: "Trần Thị Minh Chi", role: "member", password: "TBU@2026", classId: "c1", facultyId: "f1", memberId: "m2", createdAt: new Date().toISOString() },
+  { id: "u-insp", code: "CB201", name: "Phạm Thanh Kiểm", role: "inspection_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
+  { id: "u-fin", code: "CB301", name: "Hoàng Quỹ Đoàn", role: "financial_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
+];
+
 async function main() {
   console.log("Seeding faculties...");
   for (const f of FACULTIES) {
@@ -164,6 +174,15 @@ async function main() {
       where: { id: a.id },
       update: {},
       create: a,
+    })
+  }
+
+  console.log("Seeding accounts...");
+  for (const acc of INITIAL_ACCOUNTS) {
+    await prisma.account.upsert({
+      where: { id: acc.id },
+      update: {},
+      create: acc,
     })
   }
 }
