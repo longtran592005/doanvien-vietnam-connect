@@ -93,10 +93,24 @@ const INITIAL_EVENTS = [
   },
 ];
 
+const INITIAL_CAMPAIGNS = [
+  {
+    id: "camp1",
+    title: "Đoàn phí Học kỳ 1 năm 2026",
+    description: "Thu đoàn phí đợt 1 toàn trường.",
+    amount: 30000,
+    targetType: "all",
+    targetIds: null,
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    createdBy: "admin",
+  }
+];
+
 const INITIAL_FEES = INITIAL_MEMBERS.map((m, idx) => ({
   id: `fee${idx}`,
   memberId: m.id,
-  period: "2026-Q1",
+  campaignId: "camp1",
   amount: 30000,
   paid: m.feePaid,
   paidAt: m.feePaid ? "2026-03-12" : null,
@@ -156,6 +170,15 @@ async function main() {
           connect: registeredIds.map(id => ({ id }))
         }
       },
+    })
+  }
+
+  console.log("Seeding fee campaigns...");
+  for (const c of INITIAL_CAMPAIGNS) {
+    await prisma.feeCampaign.upsert({
+      where: { id: c.id },
+      update: {},
+      create: c,
     })
   }
 

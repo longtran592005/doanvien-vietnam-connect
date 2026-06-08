@@ -14,8 +14,6 @@ import {
 
 export const Route = createFileRoute("/app/dashboard")({ component: Dashboard });
 
-const PIE_COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
-
 function Dashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard-data"],
@@ -44,7 +42,19 @@ function Dashboard() {
   const classifData = useMemo(() => {
     const counts: Record<string, number> = { excellent: 0, good: 0, average: 0, poor: 0 };
     members.forEach((m) => counts[classify(m.trainingScore)]++);
-    return Object.entries(counts).map(([k, v]) => ({ name: CLASSIFICATION_LABELS[k as keyof typeof CLASSIFICATION_LABELS], value: v }));
+    
+    const colors = {
+      excellent: "#10b981", // Xanh lá - Xuất sắc
+      good: "#3b82f6",      // Xanh dương - Tốt
+      average: "#f59e0b",   // Vàng - Khá/TB
+      poor: "#ef4444"       // Đỏ - Yếu
+    };
+
+    return Object.entries(counts).map(([k, v]) => ({ 
+      name: CLASSIFICATION_LABELS[k as keyof typeof CLASSIFICATION_LABELS], 
+      value: v,
+      color: colors[k as keyof typeof colors]
+    }));
   }, [members]);
 
   const upcoming = [...events].sort((a, b) => a.startAt.localeCompare(b.startAt)).slice(0, 5);
@@ -96,7 +106,7 @@ function Dashboard() {
             <ResponsiveContainer>
               <PieChart>
                 <Pie data={classifData} dataKey="value" nameKey="name" outerRadius={80} innerRadius={40} paddingAngle={2}>
-                  {classifData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  {classifData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
                 <Legend
                   formatter={(value, entry: any) => (

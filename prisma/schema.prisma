@@ -90,14 +90,31 @@ model TrainingLog {
   createdBy String
 }
 
+model FeeCampaign {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  amount      Int
+  targetType  String   // "all" | "faculty" | "class"
+  targetIds   String?  // Mảng ID JSON string nếu chọn faculty hoặc class
+  isArchived  Boolean  @default(false)
+  createdAt   String
+  createdBy   String
+
+  feeRecords  FeeRecord[]
+}
+
 model FeeRecord {
-  id       String  @id @default(cuid())
-  memberId String
-  member   Member  @relation(fields: [memberId], references: [id])
-  period   String  // e.g. 2024-Q4
-  amount   Int
-  paid     Boolean
-  paidAt   String?
+  id         String   @id @default(cuid())
+  memberId   String
+  member     Member   @relation(fields: [memberId], references: [id])
+  campaignId String
+  campaign   FeeCampaign @relation(fields: [campaignId], references: [id])
+  amount     Int
+  paid       Boolean
+  paidAt     String?
+
+  @@unique([memberId, campaignId])
 }
 
 model AuditLog {

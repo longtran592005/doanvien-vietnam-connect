@@ -45,26 +45,38 @@ function LoginPage() {
     }
     setLoading(true);
     setErr(null);
-    try {
-      const result = await loginFn({ data: { code: code.trim(), password } });
-      if (result.error) {
-        setErr(result.error);
-        return;
-      }
-      if (result.user) {
-        setUser(result.user);
-      }
+    
+    const attemptLogin = async (retryCount: number) => {
       try {
-        if (remember) localStorage.setItem(REMEMBER_KEY, code.trim());
-        else localStorage.removeItem(REMEMBER_KEY);
-      } catch {}
-      toast.success("Đăng nhập thành công");
-      nav({ to: "/app/dashboard" });
-    } catch (e: any) {
-      setErr("Đã xảy ra lỗi kết nối. Vui lòng thử lại.");
-    } finally {
-      setLoading(false);
-    }
+        const result = await loginFn({ data: { code: code.trim(), password } });
+        if (result.error) {
+          setErr(result.error);
+          return;
+        }
+        if (result.user) {
+          setUser(result.user);
+        }
+        try {
+          if (remember) localStorage.setItem(REMEMBER_KEY, code.trim());
+          else localStorage.removeItem(REMEMBER_KEY);
+        } catch {}
+        toast.success("Đăng nhập thành công");
+        nav({ to: "/app/dashboard" });
+      } catch (e: any) {
+        if (retryCount > 0) {
+          console.warn("Lỗi kết nối lần đầu, đang thử lại...", e);
+          // Wait briefly before retrying
+          await new Promise((resolve) => setTimeout(resolve, 800));
+          await attemptLogin(retryCount - 1);
+        } else {
+          console.error(e);
+          setErr("Đã xảy ra lỗi kết nối. Vui lòng thử lại.");
+        }
+      }
+    };
+
+    await attemptLogin(1);
+    setLoading(false);
   };
 
   return (

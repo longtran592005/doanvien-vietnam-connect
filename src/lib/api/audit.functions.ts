@@ -17,10 +17,11 @@ export const addAuditLogFn = createServerFn({ method: "POST" })
   });
 
 export const getDashboardDataFn = createServerFn({ method: "GET" }).handler(async () => {
-  const [members, events, fees, faculties, classes, training, audit] = await Promise.all([
+  const [members, events, fees, feeCampaigns, faculties, classes, training, audit] = await Promise.all([
     prisma.member.findMany(),
     prisma.eventItem.findMany(),
     prisma.feeRecord.findMany(),
+    prisma.feeCampaign.findMany({ where: { isArchived: false } }),
     prisma.faculty.findMany(),
     prisma.classUnit.findMany(),
     prisma.trainingLog.findMany(),
@@ -31,6 +32,7 @@ export const getDashboardDataFn = createServerFn({ method: "GET" }).handler(asyn
     members,
     events: events.map(e => ({...e, registered: [] as string[], attended: [] as string[]})), // simplified for dashboard
     fees,
+    feeCampaigns,
     faculties,
     classes,
     training,
