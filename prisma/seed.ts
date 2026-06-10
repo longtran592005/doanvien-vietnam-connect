@@ -3,27 +3,67 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 const FACULTIES = [
-  { id: "f1", code: "CNTT", name: "Khoa Công nghệ Thông tin" },
-  { id: "f2", code: "KT", name: "Khoa Kinh tế" },
-  { id: "f3", code: "NN", name: "Khoa Ngoại ngữ" },
-  { id: "f4", code: "YD", name: "Khoa Y Dược" },
-  { id: "f5", code: "SP", name: "Khoa Sư phạm" },
+  { id: "f_cnkt", code: "CNKT", name: "Khoa Công nghệ và Kỹ thuật" },
+  { id: "f_ktl", code: "KTLQHQT", name: "Khoa Kinh tế, Luật và Quan hệ quốc tế" },
 ];
 
-const CLASSES = [
-  { id: "c1", facultyId: "f1", name: "CNTT K62A" },
-  { id: "c2", facultyId: "f1", name: "CNTT K62B" },
-  { id: "c3", facultyId: "f1", name: "CNTT K63A" },
-  { id: "c4", facultyId: "f2", name: "QTKD K62" },
-  { id: "c5", facultyId: "f2", name: "Kế toán K63" },
-  { id: "c6", facultyId: "f3", name: "Anh K62" },
-  { id: "c7", facultyId: "f4", name: "Điều dưỡng K62" },
-  { id: "c8", facultyId: "f5", name: "GD Tiểu học K62" },
+const MAJORS_CNKT = [
+  { code: "CNTT", name: "Công nghệ thông tin" },
+  { code: "CTM", name: "Chế tạo máy" },
+  { code: "CĐT", name: "Cơ điện tử" },
+  { code: "CK", name: "Cơ khí" },
+  { code: "ĐL", name: "Điện lạnh" },
+  { code: "OT", name: "Ô tô" },
+  { code: "ĐCN", name: "Điện công nghiệp" },
+  { code: "ĐTCN", name: "Điện tử công nghiệp" },
 ];
 
-const FIRST = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Vũ", "Đặng", "Bùi", "Đỗ", "Hồ"];
-const MID = ["Văn", "Thị", "Minh", "Quang", "Thanh", "Hữu", "Xuân", "Thu"];
-const LAST = ["An", "Bình", "Chi", "Dung", "Hà", "Hải", "Khánh", "Linh", "Mai", "Nam", "Phong", "Quân", "Sơn", "Trang", "Tuấn", "Vy"];
+const MAJORS_KTL = [
+  { code: "KTDN", name: "Kế toán doanh nghiệp" },
+  { code: "KTTH", name: "Kế toán tổng hợp" },
+  { code: "QLKT", name: "Quản lý kinh tế" },
+  { code: "TCNH", name: "Tài chính ngân hàng" },
+  { code: "LUAT", name: "Luật" },
+  { code: "LGT&QTCCU", name: "Logistics và quản trị chuỗi cung ứng" },
+  { code: "QTDLKS", name: "Quản trị du lịch - khách sạn" },
+  { code: "MKTTM", name: "Marketing thương mại" },
+  { code: "QLDN", name: "Quản lý doanh nghiệp" },
+  { code: "QTKDTH", name: "Quản trị kinh doanh tổng hợp" },
+  { code: "QTNNL", name: "Quản trị nguồn nhân lực" },
+];
+
+const COHORTS = [
+  { num: 11, year: 2022 },
+  { num: 12, year: 2023 },
+  { num: 13, year: 2024 },
+  { num: 14, year: 2025 },
+];
+
+const CLASSES: Array<{ id: string; facultyId: string; name: string; joinYear: number }> = [];
+let cIdx = 1;
+
+for (const cohort of COHORTS) {
+  for (const major of MAJORS_CNKT) {
+    CLASSES.push({
+      id: `c_${cohort.num}_${major.code}`,
+      facultyId: "f_cnkt",
+      name: `DH${cohort.num}-${major.code}`,
+      joinYear: cohort.year
+    });
+  }
+  for (const major of MAJORS_KTL) {
+    CLASSES.push({
+      id: `c_${cohort.num}_${major.code.replace('&', '')}`,
+      facultyId: "f_ktl",
+      name: `DH${cohort.num}-${major.code}`,
+      joinYear: cohort.year
+    });
+  }
+}
+
+const FIRST = ["Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Vũ", "Đặng", "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý"];
+const MID = ["Văn", "Thị", "Minh", "Quang", "Thanh", "Hữu", "Xuân", "Thu", "Hải", "Ngọc", "Tuấn", "Hồng", "Đức", "Trọng", "Thành"];
+const LAST = ["An", "Bình", "Chi", "Dung", "Hà", "Hải", "Khánh", "Linh", "Mai", "Nam", "Phong", "Quân", "Sơn", "Trang", "Tuấn", "Vy", "Anh", "Long", "Hiếu", "Thảo", "Hương", "Đạt", "Hùng", "Huy", "Lan", "Nhung"];
 const rand = (n: number) => Math.floor(Math.random() * n);
 const pick = <T,>(a: T[]) => a[rand(a.length)];
 
@@ -31,27 +71,34 @@ function genMembers() {
   const out = [];
   let i = 1;
   for (const c of CLASSES) {
-    const count = 8 + rand(6);
-    for (let k = 0; k < count; k++) {
-      const score = 55 + rand(45);
+    const count = 10 + rand(8); // 10-17 students per class
+    for (let k = 1; k <= count; k++) {
+      const score = 50 + rand(50); // 50 to 99
+      const joinMonth = String(8 + rand(3)).padStart(2, '0'); // Aug to Oct
+      const joinDay = String(1 + rand(28)).padStart(2, '0');
+      // Student code format: SV + Year + ClassCodeNum + Sequence
+      // e.g. SV 2022 001 001
+      const studentCode = `SV${c.joinYear}${String(cIdx).padStart(3, "0")}${String(k).padStart(3, "0")}`;
+      
       out.push({
-        id: `m${i}`,
-        code: `SV${String(20210000 + i).padStart(8, "0")}`,
+        id: `m_${c.id}_${k}`,
+        code: studentCode,
         fullName: `${pick(FIRST)} ${pick(MID)} ${pick(LAST)}`,
-        dob: `200${2 + rand(4)}-0${1 + rand(9)}-1${rand(9)}`,
+        dob: `${c.joinYear - 18}-0${1 + rand(9)}-1${rand(9)}`, // Assuming roughly 18 at join year
         gender: rand(2) === 0 ? "M" : "F",
         classId: c.id,
         facultyId: c.facultyId,
         phone: `09${rand(10)}${rand(10)}${rand(10)}${rand(10)}${rand(10)}${rand(10)}${rand(10)}${rand(10)}`,
-        email: `sv${i}@tbu.edu.vn`,
-        joinDate: "2022-09-15",
-        partyStatus: score > 85 ? (rand(3) === 0 ? "aspirant" : "member") : "member",
+        email: `${studentCode.toLowerCase()}@tbu.edu.vn`,
+        joinDate: `${c.joinYear}-${joinMonth}-${joinDay}`,
+        partyStatus: score > 85 ? (rand(4) === 0 ? "aspirant" : "member") : "member",
         trainingScore: score,
-        feePaid: rand(3) !== 0,
+        feePaid: rand(4) !== 0,
         role: "member",
       });
       i++;
     }
+    cIdx++;
   }
   return out;
 }
@@ -62,34 +109,33 @@ const INITIAL_EVENTS = [
   {
     id: "e1",
     title: "Lễ kết nạp Đoàn viên mới 2026",
-    description: "Lễ kết nạp đoàn viên mới khóa K65 toàn trường.",
+    description: "Lễ kết nạp đoàn viên mới toàn trường.",
     startAt: "2026-06-15T08:00",
     location: "Hội trường A — TBU",
     status: "approved",
     createdBy: "university",
-    registeredIds: INITIAL_MEMBERS.slice(0, 30).map((m) => m.id),
+    registeredIds: INITIAL_MEMBERS.slice(0, 50).map((m) => m.id),
   },
   {
     id: "e2",
-    title: "Hiến máu nhân đạo",
-    description: "Chiến dịch hiến máu tình nguyện toàn trường.",
-    startAt: "2026-06-20T07:30",
-    location: "Sân vận động TBU",
-    status: "pending",
-    createdBy: "faculty",
-    facultyId: "f1",
-    registeredIds: INITIAL_MEMBERS.slice(5, 20).map((m) => m.id),
+    title: "Ngày hội Việc làm TBU 2026",
+    description: "Kết nối sinh viên với các doanh nghiệp, tập đoàn.",
+    startAt: "2026-07-10T07:30",
+    location: "Khuôn viên TBU",
+    status: "approved",
+    createdBy: "university",
+    registeredIds: INITIAL_MEMBERS.slice(50, 150).map((m) => m.id),
   },
   {
     id: "e3",
-    title: "Cuộc thi Olympic Tin học",
-    description: "Cuộc thi học thuật cấp Khoa CNTT.",
-    startAt: "2026-07-01T13:30",
-    location: "Phòng máy B2.03",
+    title: "Hội thảo Công nghệ tương lai",
+    description: "Hội thảo học thuật cấp Khoa Công nghệ và Kỹ thuật.",
+    startAt: "2026-08-01T13:30",
+    location: "Phòng Hội thảo C1",
     status: "pending",
-    createdBy: "class",
-    facultyId: "f1",
-    registeredIds: [],
+    createdBy: "faculty",
+    facultyId: "f_cnkt",
+    registeredIds: INITIAL_MEMBERS.filter(m => m.facultyId === 'f_cnkt').slice(0, 40).map((m) => m.id),
   },
 ];
 
@@ -108,7 +154,7 @@ const INITIAL_CAMPAIGNS = [
 ];
 
 const INITIAL_FEES = INITIAL_MEMBERS.map((m, idx) => ({
-  id: `fee${idx}`,
+  id: `fee_${m.id}`,
   memberId: m.id,
   campaignId: "camp1",
   amount: 30000,
@@ -123,9 +169,10 @@ const INITIAL_AUDIT = [
 const INITIAL_ACCOUNTS = [
   { id: "u-admin", code: "ADMIN01", name: "Quản trị viên hệ thống", role: "admin", password: "TBU@2026", createdAt: new Date().toISOString() },
   { id: "u-univ", code: "CB001", name: "Nguyễn Văn Trường", role: "university_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
-  { id: "u-fac", code: "CB101", name: "Trần Thị Khoa", role: "faculty_officer", password: "TBU@2026", facultyId: "f1", createdAt: new Date().toISOString() },
-  { id: "u-sec", code: "SV20210001", name: "Lê Minh Bí Thư", role: "class_secretary", password: "TBU@2026", classId: "c1", facultyId: "f1", memberId: "m1", createdAt: new Date().toISOString() },
-  { id: "u-mem", code: "SV20210002", name: "Trần Thị Minh Chi", role: "member", password: "TBU@2026", classId: "c1", facultyId: "f1", memberId: "m2", createdAt: new Date().toISOString() },
+  { id: "u-fac1", code: "CB_CNKT", name: "Trần Trưởng Khoa", role: "faculty_officer", password: "TBU@2026", facultyId: "f_cnkt", createdAt: new Date().toISOString() },
+  { id: "u-fac2", code: "CB_KTL", name: "Lê Trưởng Khoa", role: "faculty_officer", password: "TBU@2026", facultyId: "f_ktl", createdAt: new Date().toISOString() },
+  { id: "u-sec", code: INITIAL_MEMBERS[0].code, name: INITIAL_MEMBERS[0].fullName, role: "class_secretary", password: "TBU@2026", classId: INITIAL_MEMBERS[0].classId, facultyId: INITIAL_MEMBERS[0].facultyId, memberId: INITIAL_MEMBERS[0].id, createdAt: new Date().toISOString() },
+  { id: "u-mem", code: INITIAL_MEMBERS[1].code, name: INITIAL_MEMBERS[1].fullName, role: "member", password: "TBU@2026", classId: INITIAL_MEMBERS[1].classId, facultyId: INITIAL_MEMBERS[1].facultyId, memberId: INITIAL_MEMBERS[1].id, createdAt: new Date().toISOString() },
   { id: "u-insp", code: "CB201", name: "Phạm Thanh Kiểm", role: "inspection_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
   { id: "u-fin", code: "CB301", name: "Hoàng Quỹ Đoàn", role: "financial_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
 ];
@@ -135,36 +182,40 @@ async function main() {
   for (const f of FACULTIES) {
     await prisma.faculty.upsert({
       where: { id: f.id },
-      update: {},
+      update: f,
       create: f,
     })
   }
 
   console.log("Seeding classes...");
   for (const c of CLASSES) {
+    const { joinYear, ...classData } = c;
     await prisma.classUnit.upsert({
-      where: { id: c.id },
-      update: {},
-      create: c,
+      where: { id: classData.id },
+      update: classData,
+      create: classData,
     })
   }
 
   console.log("Seeding members...");
-  for (const m of INITIAL_MEMBERS) {
-    await prisma.member.upsert({
-      where: { id: m.id },
-      update: {},
-      create: m,
-    })
+  // Bulk insert for members due to potentially large number
+  await prisma.member.deleteMany({});
+  
+  // Chunking to avoid sqlite too many variables error
+  const chunkSize = 100;
+  for (let i = 0; i < INITIAL_MEMBERS.length; i += chunkSize) {
+    const chunk = INITIAL_MEMBERS.slice(i, i + chunkSize);
+    await prisma.member.createMany({
+      data: chunk,
+    });
   }
 
   console.log("Seeding events...");
+  await prisma.eventItem.deleteMany({});
   for (const e of INITIAL_EVENTS) {
     const { registeredIds, ...eventData } = e;
-    await prisma.eventItem.upsert({
-      where: { id: e.id },
-      update: {},
-      create: {
+    await prisma.eventItem.create({
+      data: {
         ...eventData,
         registeredMembers: {
           connect: registeredIds.map(id => ({ id }))
@@ -174,38 +225,36 @@ async function main() {
   }
 
   console.log("Seeding fee campaigns...");
+  await prisma.feeCampaign.deleteMany({});
   for (const c of INITIAL_CAMPAIGNS) {
-    await prisma.feeCampaign.upsert({
-      where: { id: c.id },
-      update: {},
-      create: c,
+    await prisma.feeCampaign.create({
+      data: c,
     })
   }
 
   console.log("Seeding fees...");
-  for (const f of INITIAL_FEES) {
-    await prisma.feeRecord.upsert({
-      where: { id: f.id },
-      update: {},
-      create: f,
-    })
+  await prisma.feeRecord.deleteMany({});
+  for (let i = 0; i < INITIAL_FEES.length; i += chunkSize) {
+    const chunk = INITIAL_FEES.slice(i, i + chunkSize);
+    await prisma.feeRecord.createMany({
+      data: chunk,
+    });
   }
 
   console.log("Seeding audits...");
   for (const a of INITIAL_AUDIT) {
     await prisma.auditLog.upsert({
       where: { id: a.id },
-      update: {},
+      update: a,
       create: a,
     })
   }
 
   console.log("Seeding accounts...");
+  await prisma.account.deleteMany({});
   for (const acc of INITIAL_ACCOUNTS) {
-    await prisma.account.upsert({
-      where: { id: acc.id },
-      update: {},
-      create: acc,
+    await prisma.account.create({
+      data: acc,
     })
   }
 }

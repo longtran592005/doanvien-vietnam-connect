@@ -49,6 +49,7 @@ function MembersPage() {
   const [q, setQ] = useState("");
   const [facFilter, setFacFilter] = useState("all");
   const [clsFilter, setClsFilter] = useState("all");
+  const [cohortFilter, setCohortFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const allowedAdd = can(user?.role, "members.edit");
@@ -68,10 +69,26 @@ function MembersPage() {
     }
   };
 
+  const cohorts = useMemo(() => {
+    if (!data) return [];
+    const cs = new Set<string>();
+    data.classes.forEach(c => {
+      const match = c.name.match(/DH(\d+)-/);
+      if (match) cs.add(match[1]);
+    });
+    return Array.from(cs).sort((a, b) => b.localeCompare(a));
+  }, [data]);
+
   const list = useMemo(() => {
     if (!data) return [];
     let l = scopedMembers(data.members, user!);
     if (facFilter !== "all") l = l.filter((m) => m.facultyId === facFilter);
+    if (cohortFilter !== "all") {
+      l = l.filter((m) => {
+        const c = data.classes.find(cls => cls.id === m.classId);
+        return c && c.name.includes(`DH${cohortFilter}-`);
+      });
+    }
     if (clsFilter !== "all") l = l.filter((m) => m.classId === clsFilter);
     if (q.trim()) {
       const s = q.toLowerCase();
@@ -115,18 +132,28 @@ function MembersPage() {
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên hoặc mã..." className="pl-9" />
             </div>
+            <Select value={cohortFilter} onValueChange={(v) => { setCohortFilter(v); setClsFilter("all"); }}>
+              <SelectTrigger className="w-[130px]"><SelectValue placeholder="Khóa" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả Khóa</SelectItem>
+                {cohorts.map((c) => <SelectItem key={c} value={c}>Khóa {c}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Select value={facFilter} onValueChange={(v) => { setFacFilter(v); setClsFilter("all"); }}>
-              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Khoa" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả khoa</SelectItem>
                 {faculties.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={clsFilter} onValueChange={setClsFilter}>
-              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Lớp" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả lớp</SelectItem>
-                {classes.filter((c) => facFilter === "all" || c.facultyId === facFilter).map((c) => (
+                {classes.filter((c) => 
+                  (facFilter === "all" || c.facultyId === facFilter) &&
+                  (cohortFilter === "all" || c.name.includes(`DH${cohortFilter}-`))
+                ).map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
               </SelectContent>
