@@ -36,20 +36,29 @@ function LoginPage() {
   }, []);
 
   const [loading, setLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState("Đang đăng nhập...");
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!code.trim() || !password.trim()) {
       setErr("Vui lòng nhập đầy đủ thông tin.");
       return;
     }
     setLoading(true);
+    setLoadingText("Đang đăng nhập...");
     setErr(null);
     
     const attemptLogin = async (retryCount: number) => {
       try {
         const result = await loginFn({ data: { code: code.trim(), password } });
         if (result.error) {
+          if (retryCount > 0) {
+            console.warn("Đăng nhập thất bại lần 1, tự động thử lại...");
+            setLoadingText("Đang tự động thử lại...");
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await attemptLogin(retryCount - 1);
+            return;
+          }
           setErr(result.error);
           return;
         }
@@ -65,8 +74,8 @@ function LoginPage() {
       } catch (e: any) {
         if (retryCount > 0) {
           console.warn("Lỗi kết nối lần đầu, đang thử lại...", e);
-          // Wait briefly before retrying
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          setLoadingText("Lỗi kết nối, đang thử lại...");
+          await new Promise((resolve) => setTimeout(resolve, 1000));
           await attemptLogin(retryCount - 1);
         } else {
           console.error(e);
@@ -77,6 +86,7 @@ function LoginPage() {
 
     await attemptLogin(1);
     setLoading(false);
+    setLoadingText("Đang đăng nhập...");
   };
 
   return (
@@ -197,7 +207,7 @@ function LoginPage() {
                 </p>
               )}
               <Button type="submit" className="w-full h-11 font-medium" disabled={loading}>
-                {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+                {loading ? loadingText : "Đăng nhập"}
               </Button>
               <p className="text-xs text-foreground/60 text-center">
                 Bằng việc đăng nhập, bạn đồng ý với quy định sử dụng hệ thống của Đoàn trường.

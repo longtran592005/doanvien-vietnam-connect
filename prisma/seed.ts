@@ -105,6 +105,11 @@ function genMembers() {
 
 const INITIAL_MEMBERS = genMembers();
 
+INITIAL_MEMBERS[0].code = "SV20210001";
+INITIAL_MEMBERS[0].email = "sv20210001@tbu.edu.vn";
+INITIAL_MEMBERS[1].code = "SV20210002";
+INITIAL_MEMBERS[1].email = "sv20210002@tbu.edu.vn";
+
 const INITIAL_EVENTS = [
   {
     id: "e1",
@@ -169,10 +174,9 @@ const INITIAL_AUDIT = [
 const INITIAL_ACCOUNTS = [
   { id: "u-admin", code: "ADMIN01", name: "Quản trị viên hệ thống", role: "admin", password: "TBU@2026", createdAt: new Date().toISOString() },
   { id: "u-univ", code: "CB001", name: "Nguyễn Văn Trường", role: "university_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
-  { id: "u-fac1", code: "CB_CNKT", name: "Trần Trưởng Khoa", role: "faculty_officer", password: "TBU@2026", facultyId: "f_cnkt", createdAt: new Date().toISOString() },
-  { id: "u-fac2", code: "CB_KTL", name: "Lê Trưởng Khoa", role: "faculty_officer", password: "TBU@2026", facultyId: "f_ktl", createdAt: new Date().toISOString() },
-  { id: "u-sec", code: INITIAL_MEMBERS[0].code, name: INITIAL_MEMBERS[0].fullName, role: "class_secretary", password: "TBU@2026", classId: INITIAL_MEMBERS[0].classId, facultyId: INITIAL_MEMBERS[0].facultyId, memberId: INITIAL_MEMBERS[0].id, createdAt: new Date().toISOString() },
-  { id: "u-mem", code: INITIAL_MEMBERS[1].code, name: INITIAL_MEMBERS[1].fullName, role: "member", password: "TBU@2026", classId: INITIAL_MEMBERS[1].classId, facultyId: INITIAL_MEMBERS[1].facultyId, memberId: INITIAL_MEMBERS[1].id, createdAt: new Date().toISOString() },
+  { id: "u-fac1", code: "CB101", name: "Trần Trưởng Khoa", role: "faculty_officer", password: "TBU@2026", facultyId: "f_cnkt", createdAt: new Date().toISOString() },
+  { id: "u-sec", code: "SV20210001", name: INITIAL_MEMBERS[0].fullName, role: "class_secretary", password: "TBU@2026", classId: INITIAL_MEMBERS[0].classId, facultyId: INITIAL_MEMBERS[0].facultyId, memberId: INITIAL_MEMBERS[0].id, createdAt: new Date().toISOString() },
+  { id: "u-mem", code: "SV20210002", name: INITIAL_MEMBERS[1].fullName, role: "member", password: "TBU@2026", classId: INITIAL_MEMBERS[1].classId, facultyId: INITIAL_MEMBERS[1].facultyId, memberId: INITIAL_MEMBERS[1].id, createdAt: new Date().toISOString() },
   { id: "u-insp", code: "CB201", name: "Phạm Thanh Kiểm", role: "inspection_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
   { id: "u-fin", code: "CB301", name: "Hoàng Quỹ Đoàn", role: "financial_officer", password: "TBU@2026", createdAt: new Date().toISOString() },
 ];

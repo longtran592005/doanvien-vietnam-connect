@@ -114,24 +114,26 @@ function AppLayout() {
 
           <div className="ml-auto flex items-center gap-2">
             {/* Role switcher (demo) */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Badge variant="secondary" className="font-normal">DEMO</Badge>
-                  <span className="hidden sm:inline">{ROLE_LABELS[user.role]}</span>
-                  <ChevronDown className="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>Chuyển vai trò (kiểm thử)</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={user.role} onValueChange={(v) => switchRole(v as Role)}>
-                  {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
-                    <DropdownMenuRadioItem key={r} value={r}>{ROLE_LABELS[r]}</DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {user.role === "admin" && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Badge variant="secondary" className="font-normal">DEMO</Badge>
+                    <span className="hidden sm:inline">{ROLE_LABELS[user.role]}</span>
+                    <ChevronDown className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel>Chuyển vai trò (kiểm thử)</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup value={user.role} onValueChange={(v) => switchRole(v as Role)}>
+                    {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+                      <DropdownMenuRadioItem key={r} value={r}>{ROLE_LABELS[r]}</DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
             <NotificationsBell />
 
